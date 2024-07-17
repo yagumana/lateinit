@@ -1,0 +1,29 @@
+# dockerファイルをビルドするためのコマンド, dockerfileが存在するディレクトリで実行
+docker build -t manato.yaguchi_ddpm_experiments .
+
+# dockerコンテナを起動するコマンド
+docker container run -v /home/manato.yaguchi/diffusion/ddpm_experiments:/workspace --gpus "device=2" -it --name manato.yaguchi_ddpm_experiments manato.yaguchi_ddpm_experiments
+
+# すでに起動済みのdockerコンテナに対話シェルを通して操作するコマンド
+docker exec -it manato.yaguchi_ddpm_experiments /bin/bash
+
+# 起動中のDockerコンテナの一覧を表示
+docker ps
+
+# 起動中のDockerコンテナを停止
+docker stop manato.yaguchi_ddpm_experiments
+
+# Dockerコンテナを削除
+docker rm manato.yaguchi_ddpm_experiments
+
+# train model
+python main.py --workdir="./results/ddpm_cifar10" --config="configs/ddpm/cifar10.py" --mode="train"
+
+# get stats file
+python main.py --config="configs/ddpm/cifar10.py" --mode="fid_stats" --workdir="./results/ddpm_cifar10"
+
+# eval
+python main.py --config="configs/ddpm/cifar10.py" --mode="eval" --workdir="./results/ddpm_cifar10"
+
+# fast_sampler
+python main.py --config="configs/ddpm/cifar10.py" --mode="ablation_fast_sampler" --workdir="./results/ddpm_cifar10" --fast_sampler="ddim" --n_steps=1 --samples=64 --gaussian_approximation=False --generate=False --grid_size=200 --eval_folder="eval"
