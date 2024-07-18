@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import sys
 
 def circle_dataset(n=8000, r=4, noise_level=0.01):
     """
@@ -114,3 +115,27 @@ def ellipse_dataset(n=8000, a=1, b=1, dim=7, noise_level=0.01):
     embedding += noise
 
     return torch.from_numpy(embedding.astype(np.float32))
+
+def embed_sphere_dataset(n=8000, dim_d=51, dataset_path=None):
+    """
+    hyperspherical vaeを用いて、潜在空間に埋め込んだdatasetをもとに、datasetを生成
+    """
+    print("loading data from hyperspherical vae...")
+    # 保存されたテンソルをロード
+    z_mean_all = torch.load(dataset_path)
+
+    # 指定された数のデータをランダムにサンプリング
+    idx = np.random.choice(z_mean_all.shape[0], n, replace=False)
+    z_sampled = z_mean_all[idx]
+    print(z_sampled.shape)
+    
+    # 次元の拡張
+    if dim_d > z_sampled.shape[1]:
+        z_extended = torch.zeros((n, dim_d))
+        z_extended[:, :z_sampled.shape[1]] = z_sampled
+    else:
+        z_extended = z_sampled[:, :dim_d]
+
+    print(z_extended.shape)
+
+    return z_extended

@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from positional_embeddings import PositionalEmbedding
 import utils
+import sys
 
 
 class VP_SDE_dim:
@@ -65,14 +66,17 @@ def euler_maruyama_dim(u0, SDE):
 
 
 class Block(nn.Module):
-    def __init__(self, size: int):
+    def __init__(self, input_size: int, output_size: int):
         super().__init__()
 
-        self.ff = nn.Linear(size, size)
+        self.ff = nn.Linear(input_size, input_size)
+        self.ff2 = nn.Linear(input_size, output_size)
         self.act = nn.GELU()
 
     def forward(self, x: torch.Tensor):
-        return x + self.act(self.ff(x))
+        x = x + self.act(self.ff(x))
+        x = self.act(self.ff2(x))
+        return x
 
 
     
@@ -86,10 +90,13 @@ class MLP(nn.Module):
         self.input_mlps = nn.ModuleList([PositionalEmbedding(emb_size, input_emb, scale=25.0) for _ in range(out_dim)])
 
         concat_size = len(self.time_mlp.layer) + len(self.input_mlps) * len(self.input_mlps[0].layer)
-        layers = [nn.Linear(concat_size, hidden_size), nn.GELU()]
-        for _ in range(hidden_layers):
-            layers.append(Block(hidden_size))
-        layers.append(nn.Linear(hidden_size, out_dim))
+        
+        layers = [nn.Linear(concat_size, concat_size//2), nn.GELU()]
+        # for _ in range(hidden_layers):
+        layers.append(Block(concat_size//2, concat_size//4))
+        layers.append(Block(concat_size//4, concat_size//8))
+        layers.append(Block(concat_size//8, concat_size//16))
+        layers.append(nn.Linear(concat_size//16, out_dim))
         self.joint_mlp = nn.Sequential(*layers)
 
     def forward(self, x, t, device):
@@ -279,13 +286,14 @@ class NoiseScheduler():
         return self.num_timesteps
     
 
-def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100):
+def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100, wandb=None):
     global_step = 0
     frames = []
     losses = []
 
-    for _ in tqdm(range(N_epoch)):
+    for epoch in tqdm(range(N_epoch)):
         nn_model.train()
+        total_loss = 0
         for step, batch in enumerate(dataloader):
             batch = batch[0].to(device)
             dim_d = batch.shape[-1]
@@ -302,8 +310,16 @@ def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100)
             optimizer.step()
             optimizer.zero_grad()
 
-            losses.append(loss.detach().item())
-            global_step += 1
+        total_loss += loss.detach().item()
+        avg_loss = total_loss / len(dataloader)
+        losses.append(avg_loss)
+        if wandb:
+            wandb.log({'epoch': epoch, 'loss': avg_loss})
+        
+        # エポックごとにlossを出力
+        print(f"Epoch [{epoch+1}/{N_epoch}], Loss: {avg_loss:.4f}")
+
+    return losses
 
         # nn_model.eval()
         # sample = torch.randn(32, dim_d).to(device)

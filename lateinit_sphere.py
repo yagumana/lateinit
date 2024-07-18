@@ -34,8 +34,8 @@ Late_time = [0, 100, 200, 300, 400, 500, 600, 700, 725, 750, 775, 800, 825, 850,
 Late_time_transformed = [Time_step - t for t in Late_time]
 
 Data_size = 1000
-dim_d = 7
-dataset_name = "sphere_notuniform"
+dim_d = 49
+dataset_name = "circle"
 batch_size = 1000
 Roop = 5
 Load_exp = True

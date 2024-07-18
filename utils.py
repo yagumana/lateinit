@@ -242,10 +242,30 @@ def is_neighbour_ellipse(x, a=1, b=1):
     else:
         return False
 
-    
-def neighbourhood_cnt(Us, dataset_name, R=2, r=1):
+def is_neighbour_nd(x, dim_z=21):
+    dim = len(x)
+    injective_R = 1
+    total_dis = 0
+
+    # 半径1のn次元球面からの距離の2乗を計算
+    for i in range(dim_z):
+        total_dis += x[i]**2
+    total_dis = np.abs(total_dis-1)
+
+    # n次元球面からの距離の2乗を計算
+    for i in range(dim_z, dim):
+        total_dis += x[i]**2
+    total_dis = np.sqrt(total_dis)
+
+    if total_dis < injective_R:
+        return True
+    else:
+        return False
+
+def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21):
     Time_step, Data_size, dim = Us.shape
     cnt_prob = []
+    print(f"dataset_name: {dataset_name}")
 
     for t in range(Time_step):
         cnt = 0
@@ -253,7 +273,7 @@ def neighbourhood_cnt(Us, dataset_name, R=2, r=1):
             if dataset_name == "circle":
                 if not is_neighbour_2d(Us[t][i]):
                     cnt += 1
-            elif dataset_name == "sphere" or "sphere_notuniform":
+            elif dataset_name == "sphere" or dataset_name == "sphere_notuniform":
                 if not is_neighbour_3d(Us[t][i]):
                     cnt += 1
             elif dataset_name == "torus":
@@ -262,6 +282,10 @@ def neighbourhood_cnt(Us, dataset_name, R=2, r=1):
             elif dataset_name == "ellipse":
                 if not is_neighbour_ellipse(Us[t][i], a=R, b=r):
                     cnt += 1
+            elif dataset_name == "embed_sphere":
+                if not is_neighbour_nd(Us[t][i], dim_z):
+                    cnt += 1
+                pass
             else:
                 print("Not implemented! check the dataset_name again!")     
                 sys.exit()       

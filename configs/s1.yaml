@@ -1,0 +1,10 @@
+time_step: 1000
+data_size: 10000
+dim_d: 50
+dim_z: 21
+is_train: True
+batch_size: 1000
+dataset_name: "circle"
+dataset_path: None
+R: 3
+r: 1
