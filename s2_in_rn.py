@@ -204,23 +204,4 @@ if __name__ == "__main__":
     plt.xlim(-3, 3)
     plt.ylim(-3, 3)
     plt.savefig(f'images/{path_name}/r{dim_d}_back_dim01_2.png')
-
-    # plt.figure(figsize=(9, 6))
-    # plt.scatter(Us_backward[1, -1, :, 10], Us_backward[1, -1, :, 31])
-    # # plt.xlim(-3, 3)
-    # # plt.ylim(-3, 3)
-    # plt.savefig(f'images/{path_name}/r{dim_d}_back_dim1031_2.png')
-
-    # plt.figure(figsize=(9, 6))
-    # plt.scatter(Us_backward[1, -1, :, 9], Us_backward[1, -1, :, 32])
-    # # plt.xlim(-3, 3)
-    # # plt.ylim(-3, 3)
-    # plt.savefig(f'images/{path_name}/r{dim_d}_back_dim932_2.png')
-
-    # plt.figure(figsize=(9, 6))
-    # plt.scatter(Us_backward[2, 0, :, 2], Us_backward[2, 0, :, 3])
-    # plt.xlim(-3, 3)
-    # plt.ylim(-3, 3)
-    # plt.savefig(f'images/{path_name}/r{dim_d}_back_dim23_2.png')
-
     
