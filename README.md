@@ -13,3 +13,6 @@ python s2_in_rn.py --config /path/to/config
 # 訓練済みのddpmを用いて、late initializationによる評価を行う
 python lateinit_sphere.py --config /path/to/config
 ```
+
+- denoising-diffusion-pytorchフォルダに入って、pip でインストール
+$ pip install denoising_diffusion_pytorch

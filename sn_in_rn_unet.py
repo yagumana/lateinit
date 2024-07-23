@@ -9,7 +9,11 @@ from cycler import cycler
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from matplotlib.ticker import FormatStrFormatter
-from denoising_diffusion_pytorch import Unet1D, GaussianDiffusion1D, Trainer1D, Dataset1D
+import sys
+
+sys.path.append('./denoising-diffusion-pytorch')
+
+from denoising_diffusion_pytorch.denoising_diffusion_pytorch_1d import Unet1D, GaussianDiffusion1D, Trainer1D, Dataset1D
 
 
 import dataset
@@ -19,7 +23,6 @@ from torch.nn import functional as F
 from torch import nn
 import model
 import utils
-import sys
 import argparse
 import yaml
 import wandb
@@ -44,7 +47,7 @@ def parser_args():
     parser.add_argument('--dataset_path', type=str)
     parser.add_argument('--R', type=float)
     parser.add_argument('--r', type=float)
-    parser.add_argument('--denoise_model', type=str, default="MLP", help='Denoise model type')
+    parser.add_argument('--denoise_model', type=str, help='Denoise model type')
 
 
     args = parser.parse_args()
@@ -167,11 +170,16 @@ if __name__ == "__main__":
 
     if is_train == True:
         for i in range(5):
-            nn_model = model.MLP(hidden_size=128, hidden_layers=3, emb_size=128, time_emb="sinusoidal", input_emb="sinusoidal", out_dim=dim_d).to(device)
+            print(f"denoise_model: {denoise_model}")
+            if denoise_model == "MLP":
+                nn_model = model.MLP(hidden_size=128, hidden_layers=3, emb_size=128, time_emb="sinusoidal", input_emb="sinusoidal", out_dim=dim_d).to(device)
+            elif denoise_model == "Unet":
+                nn_model = Unet1D(dim=dim_d, channels=1).to(device)
+
             noise_scheduler = model.NoiseScheduler(num_timesteps=1000, beta_schedule="linear")
             optimizer = torch.optim.AdamW(nn_model.parameters(), lr=1e-3)
             print(f"training model_{i}...")
-            losses = model.train(nn_model, dataloader, noise_scheduler, optimizer, device=device, N_epoch=200, wandb=wandb)
+            losses = model.train(nn_model, dataloader, noise_scheduler, optimizer, device=device, N_epoch=100, wandb=wandb)
             print(f"losses: {losses}")
             if not os.path.exists(f'/workspace/weights'):
                 os.makedirs(f'/workspace/weights')
@@ -181,10 +189,10 @@ if __name__ == "__main__":
     if denoise_model == "MLP":
         nn_model = model.MLP(hidden_size=128, hidden_layers=3, emb_size=128, time_emb="sinusoidal", input_emb="sinusoidal", out_dim=dim_d).to(device)
     elif denoise_model == "Unet":
-        nn_model = Unet1D
-        pass
+        nn_model = Unet1D(dim=dim_d).to(device)
+
     print("loading Us_backward data...")
-    Us_backward = model.load_experiments(roop=5, batch_size=1000, Time_step=1000, dim_d=dim_d, device=device, path_name=path_name)
+    Us_backward = model.load_experiments(roop=5, batch_size=1000, Time_step=1000, dim_d=dim_d, device=device, path_name=path_name, denoise_model=denoise_model)
     Us_backward = np.stack(Us_backward) # [Gauss noise, ..., S_1]
     print(f"Us_backward.shape: {Us_backward.shape}") 
 

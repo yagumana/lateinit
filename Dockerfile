@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y tmux
 RUN apt-get update && apt-get install -y \
     poppler-utils \
     ffmpeg \
+    git \
     && apt-get clean
 
 # dockerが起動し続けるためのもの

@@ -373,6 +373,8 @@ class Unet1D(Module):
         x = self.mid_block2(x, t)
 
         for block1, block2, attn, upsample in self.ups:
+            # print(f"x.shape: {x.shape}")
+            # print(f"h[-1].shape: {h[-1].shape}")
             x = torch.cat((x, h.pop()), dim = 1)
             x = block1(x, t)
 

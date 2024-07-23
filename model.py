@@ -8,6 +8,9 @@ from positional_embeddings import PositionalEmbedding
 import utils
 import sys
 
+sys.path.append('./denoising-diffusion-pytorch')
+
+from denoising_diffusion_pytorch.denoising_diffusion_pytorch_1d import Unet1D, GaussianDiffusion1D, Trainer1D, Dataset1D
 
 class VP_SDE_dim:
     """ A class used to define a Stochastic Differential Equation (SDE)."""
@@ -99,8 +102,9 @@ class MLP(nn.Module):
         layers.append(nn.Linear(concat_size//16, out_dim))
         self.joint_mlp = nn.Sequential(*layers)
 
-    def forward(self, x, t, device):
+    def forward(self, x, t):
         # print(f"x:shape: {x.shape}")
+        device = x.device
         batch_size, dim = x.shape
         x_embs = [self.input_mlps[i](x[:, i].to(device)) for i in range(dim)]
         t_emb = self.time_mlp(t.to(device))
@@ -108,87 +112,6 @@ class MLP(nn.Module):
         x = self.joint_mlp(x)
         return x
     
-# class UNet1D(nn.Module):
-#     def __init__(self, in_channels, out_channels, init_features=32):
-#         super(UNet1D, self).__init__()
-#         features = init_features
-#         self.encoder1 = UNet1D._block(in_channels, features, name="enc1")
-#         self.pool1 = nn.MaxPool1d(kernel_size=2, stride=2)
-#         self.encoder2 = UNet1D._block(features, features * 2, name="enc2")
-#         self.pool2 = nn.MaxPool1d(kernel_size=2, stride=2)
-#         self.encoder3 = UNet1D._block(features * 2, features * 4, name="enc3")
-#         self.pool3 = nn.MaxPool1d(kernel_size=2, stride=2)
-#         self.encoder4 = UNet1D._block(features * 4, features * 8, name="enc4")
-#         self.pool4 = nn.MaxPool1d(kernel_size=2, stride=2)
-
-#         self.bottleneck = UNet1D._block(features * 8, features * 16, name="bottleneck")
-
-#         self.upconv4 = nn.ConvTranspose1d(
-#             features * 16, features * 8, kernel_size=2, stride=2
-#         )
-#         self.decoder4 = UNet1D._block((features * 8) * 2, features * 8, name="dec4")
-#         self.upconv3 = nn.ConvTranspose1d(
-#             features * 8, features * 4, kernel_size=2, stride=2
-#         )
-#         self.decoder3 = UNet1D._block((features * 4) * 2, features * 4, name="dec3")
-#         self.upconv2 = nn.ConvTranspose1d(
-#             features * 4, features * 2, kernel_size=2, stride=2
-#         )
-#         self.decoder2 = UNet1D._block((features * 2) * 2, features * 2, name="dec2")
-#         self.upconv1 = nn.ConvTranspose1d(
-#             features * 2, features, kernel_size=2, stride=2
-#         )
-#         self.decoder1 = UNet1D._block(features * 2, features, name="dec1")
-
-#         self.conv = nn.Conv1d(
-#             in_channels=features, out_channels=out_channels, kernel_size=1
-#         )
-
-#     def forward(self, x):
-#         enc1 = self.encoder1(x)
-#         enc2 = self.encoder2(self.pool1(enc1))
-#         enc3 = self.encoder3(self.pool2(enc2))
-#         enc4 = self.encoder4(self.pool3(enc3))
-
-#         bottleneck = self.bottleneck(self.pool4(enc4))
-
-#         dec4 = self.upconv4(bottleneck)
-#         dec4 = torch.cat((dec4, enc4), dim=1)
-#         dec4 = self.decoder4(dec4)
-#         dec3 = self.upconv3(dec4)
-#         dec3 = torch.cat((dec3, enc3), dim=1)
-#         dec3 = self.decoder3(dec3)
-#         dec2 = self.upconv2(dec3)
-#         dec2 = torch.cat((dec2, enc2), dim=1)
-#         dec2 = self.decoder2(dec2)
-#         dec1 = self.upconv1(dec2)
-#         dec1 = torch.cat((dec1, enc1), dim=1)
-#         dec1 = self.decoder1(dec1)
-#         return self.conv(dec1)
-
-#     @staticmethod
-#     def _block(in_channels, features, name):
-#         return nn.Sequential(
-#             nn.Conv1d(
-#                 in_channels=in_channels,
-#                 out_channels=features,
-#                 kernel_size=3,
-#                 padding=1,
-#                 bias=False,
-#             ),
-#             nn.BatchNorm1d(num_features=features),
-#             nn.ReLU(inplace=True),
-#             nn.Conv1d(
-#                 in_channels=features,
-#                 out_channels=features,
-#                 kernel_size=3,
-#                 padding=1,
-#                 bias=False,
-#             ),
-#             nn.BatchNorm1d(num_features=features),
-#             nn.ReLU(inplace=True),
-#         )
-
 
 class NoiseScheduler():
     def __init__(self,
@@ -299,10 +222,18 @@ def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100,
             dim_d = batch.shape[-1]
 
             noise = torch.randn(batch.shape).to(device)
-            timesteps = torch.randint(0, noise_scheduler.num_timesteps, (batch.shape[0],)).long()
+            timesteps = torch.randint(0, noise_scheduler.num_timesteps, (batch.shape[0],)).long().to(device)
             noisy = noise_scheduler.add_noise(batch, noise, timesteps)
 
-            noise_pred = nn_model(noisy, timesteps, device=device)
+            # print(f"debug: {noisy.shape}, {timesteps.shape}")
+            noisy = noisy.unsqueeze(1).to(device)
+            # print(f"debug: {noisy.shape}, {timesteps.shape}")
+
+            noise_pred = nn_model(noisy, timesteps)
+            # print(noise_pred.shape)
+            # print(noise.shape)
+            noise = noise.unsqueeze(1)
+            # sys.exit()
             loss = F.mse_loss(noise_pred, noise)
             loss.backward()
 
@@ -320,57 +251,43 @@ def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100,
         print(f"Epoch [{epoch+1}/{N_epoch}], Loss: {avg_loss:.4f}")
 
     return losses
-
-        # nn_model.eval()
-        # sample = torch.randn(32, dim_d).to(device)
-        # timesteps = list(range(len(noise_scheduler)))[::-1]
-        # for i, t in enumerate(tqdm(timesteps)):
-        #     t = torch.from_numpy(np.repeat(t, 32)).long().to(device)
-        #     with torch.no_grad():
-        #         residual = nn_model(sample, t, device=device)
-        #     sample = noise_scheduler.step(residual, t[0], sample)
-        # frames.append(sample.cpu().numpy())
-
     
 def get_denoise_data(nn_model, noise_scheduler, device, N=1000, batch_size=1000, dim = 7, late=0):
     """
     訓練済みのdiffusionモデル(nn_model)を用いて、dataがgauss noiseからN stepかけてdataが生成される過程を、data_listに保存して返す.
     """
     nn_model.eval()
-    sample = torch.randn(batch_size, dim).to(device)
+    sample = torch.randn(batch_size, 1, dim).to(device)
     # timesteps = list(range(len(noise_scheduler)))[::-1]
     timesteps = list(range(len(noise_scheduler)-late))[::-1]
     data_list = np.zeros((len(timesteps), batch_size, dim))
     for i, t in enumerate(tqdm(timesteps)):
         t = torch.from_numpy(np.repeat(t, batch_size)).long().to(device)
         with torch.no_grad():
-            residual = nn_model(sample, t, device=device)
+            residual = nn_model(sample, t)
         sample.to(device)
         sample = noise_scheduler.step(residual, t[0], sample)
-        data_list[i] = sample.cpu().numpy()
+        data_list[i] = sample.squeeze(1).cpu().numpy()
     return data_list
 
-def load_experiments(device=None, roop=5, batch_size=1000, Time_step = 1000, dim_d=7, late=0, path_name="sphere"):
+def load_experiments(device=None, roop=5, batch_size=1000, Time_step = 1000, dim_d=7, late=0, path_name="sphere", denoise_model="MLP"):
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     data_list_stacked = []
     for i in range(roop):
         utils.set_seed(i)
-        nn_model = MLP(hidden_size=128, hidden_layers=3, emb_size=128, time_emb="sinusoidal", input_emb="sinusoidal", out_dim=dim_d).to(device)
+        if denoise_model == "MLP":
+            nn_model = MLP(hidden_size=128, hidden_layers=3, emb_size=128, time_emb="sinusoidal", input_emb="sinusoidal", out_dim=dim_d).to(device)
+        elif denoise_model == "Unet":
+            nn_model = Unet1D(dim=dim_d, channels=1).to(device)
+        # nn_model = MLP(hidden_size=128, hidden_layers=3, emb_size=128, time_emb="sinusoidal", input_emb="sinusoidal", out_dim=dim_d).to(device)
         noise_scheduler = NoiseScheduler(num_timesteps=Time_step, beta_schedule="linear")
 
         # load pretrained weights
         print(f"loading pretrained weight_{i}...")
         nn_model.load_state_dict(torch.load(f'/workspace/weights/{path_name}_in_r{dim_d}_{i}.pth', map_location=device))
-        # if dataset_name=="circle":
-        #     nn_model.load_state_dict(torch.load(f'/workspace/weights/{dataset_name}_in_r{dim_d}_{i}.pth', map_location=device))
-        # elif dataset_name=="sphere":
-        #     nn_model.load_state_dict(torch.load(f'/workspace/weights/{dataset_name}_in_r{dim_d}_{i}.pth', map_location=device))
-        # elif dataset_name=="torus":
-        #     nn_model.load_state_dict(torch.load(f'/workspace/weights/{dataset_name}_in_r{dim_d}_{i}.pth', map_location=device))
         
-        # load late initialaized data
         if late==0:
             data_list = get_denoise_data(nn_model, noise_scheduler, batch_size=batch_size, dim=dim_d, device=device, late=late)
         else:
