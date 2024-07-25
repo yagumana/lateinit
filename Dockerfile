@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
     git \
     && apt-get clean
 
+# Gitの安全なディレクトリ設定を追加
+RUN git config --global --add safe.directory /workspace
+
 # dockerが起動し続けるためのもの
 CMD ["tail", "-f", "/dev/null"]
-
-# ENTRYPOINT ["/bin/bash"]

@@ -48,6 +48,8 @@ def parser_args():
     parser.add_argument('--Load_exp', action='store_true', help='If provided, Load experiment data')
     parser.add_argument('--R', type=float)
     parser.add_argument('--r', type=float)
+    parser.add_argument('--denoise_model', type=str, help='Denoise model type')
+
 
     args = parser.parse_args()
     return args
@@ -118,6 +120,8 @@ if __name__ == "__main__":
         config['R'] = args.R
     if args.r is not None:
         config['r'] = args.r
+    if args.denoise_model is not None:
+        config['denoise_model'] = args.denoise_model
     
     wandb.init(config=config, project="late initialization")
 
@@ -136,6 +140,8 @@ if __name__ == "__main__":
     Load_exp = config['Load_exp']
     R = config['R']
     r = config['r']
+    denoise_model = config['denoise_model']
+
 
     path_name = dataset_name
     if dataset_name == "torus" or dataset_name == "ellipse":
@@ -155,7 +161,7 @@ if __name__ == "__main__":
     # backwardのデータを取得
     if Load_exp == True:
         print("loading Us backward data...")
-        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=0, path_name=path_name)
+        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
         Us_backward = np.array(Us_backward)
         Us_backward = Us_backward[:, ::-1, :, :] # Us_backwardを逆順にして、Us_forwradに合わせる
 
@@ -189,7 +195,7 @@ if __name__ == "__main__":
 
     distance_ls = []
     for i in range(len(Late_time)):
-        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=Late_time[i], path_name=path_name)
+        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=Late_time[i], path_name=path_name, denoise_model=denoise_model)
         Us_backward = np.array(Us_backward)
         Us_backward = Us_backward[:, ::-1, :, :]
         ls = []
@@ -207,7 +213,7 @@ if __name__ == "__main__":
 
     # backward processにおける管状近傍の外にある粒子の割合を評価
     prob_ls_stacked = []
-    Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=0, path_name=path_name)
+    Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
     Us_backward = np.array(Us_backward)
     Us_backward = Us_backward[:, ::-1, :, :]
 
