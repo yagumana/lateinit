@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import sys
+import os
 
 def circle_dataset(n=8000, r=4, noise_level=0.01):
     """
@@ -25,6 +26,53 @@ def circle_dataset(n=8000, r=4, noise_level=0.01):
     embedding += noise
 
     return torch.from_numpy(embedding.astype(np.float32))
+
+def circle_half_dataset(n=8000, r=4, noise_level=0.01):
+    """
+    r次元のユークリッド空間に埋め込まれた円周
+    軽いノイズを追加して生成
+    """
+    embedding = np.zeros((n, r))
+
+    rng = np.random.default_rng(42)
+    p = rng.uniform(0, np.pi/2, n//2)
+    x = np.cos(p)
+    y = np.sin(p)
+    embedding[:n//2, 0] = x
+    embedding[:n//2, 1] = y
+
+    p = rng.uniform(np.pi, 3*np.pi/2, n//2)
+    x = np.cos(p)
+    y = np.sin(p)
+    embedding[n//2:, 0] = x
+    embedding[n//2:, 1] = y
+
+    # 軽いノイズを追加
+    # noise = rng.normal(0, noise_level, (n, r))
+    # embedding += noise
+
+    return torch.from_numpy(embedding.astype(np.float32))
+
+def circle_half_dataset2(n=8000, r=4, noise_level=0.01):
+    """
+    単射半径の異なる2つの円周の一部を組み合わせた多様体
+    """
+    embedding = np.zeros((n, r))
+    rng = np.random.default_rng(42)
+    p = rng.uniform(np.pi/6, np.pi/3, n//2)
+    x = np.cos(p)
+    y = np.sin(p)
+    embedding[:n//2, 0] = x
+    embedding[:n//2, 1] = y
+
+    p = rng.uniform(7*np.pi/6, 4*np.pi/3, n//2)
+    x = 2*np.cos(p)
+    y = 2*np.sin(p)
+    embedding[n//2:, 0] = x
+    embedding[n//2:, 1] = y
+
+    return torch.from_numpy(embedding.astype(np.float32))
+
 
 def sphere_dataset(n=8000, r=4, noise_level=0.01):
     """
@@ -122,6 +170,8 @@ def embed_sphere_dataset(n=8000, dim_d=51, dataset_path=None):
     """
     print("loading data from hyperspherical vae...")
     # 保存されたテンソルをロード
+    if not os.path.exists(dataset_path):
+        sys.exit(f"dataset not found: {dataset_path}")
     z_mean_all = torch.load(dataset_path)
 
     # 指定された数のデータをランダムにサンプリング

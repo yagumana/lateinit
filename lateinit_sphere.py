@@ -57,6 +57,10 @@ def parser_args():
 def get_forward_Us(dim_d, roop=5, dataset_name = "circle", num_timesteps=1000, batch_size=1000):
     if dataset_name == "circle":
         train_data = dataset.circle_dataset(8000, dim_d)
+    elif dataset_name == "circle_half":
+        train_data = dataset.circle_half_dataset(8000, dim_d)
+    elif dataset_name == "circle_two_injectivity":
+        train_data = dataset.circle_half_dataset2(8000, dim_d)
     elif dataset_name == "sphere":
         train_data = dataset.sphere_dataset(8000, dim_d)
     elif dataset_name == "sphere_notuniform":
@@ -65,6 +69,8 @@ def get_forward_Us(dim_d, roop=5, dataset_name = "circle", num_timesteps=1000, b
         train_data = dataset.torus_dataset(8000, R=R, r=r, dim=dim_d)
     elif dataset_name == "ellipse":
         train_data = dataset.ellipse_dataset(n=8000, a=R, b=r, dim=dim_d).numpy()
+    elif dataset_name == "embed_sphere":
+        train_data = dataset.embed_sphere_dataset(n=8000, dim_d=dim_d, dataset_path="./data/mnist/z_mean_S20.pt").detach().numpy()
 
     dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, drop_last=True)
     nn_model = model.MLP(hidden_size=128, hidden_layers=3, emb_size=128, time_emb="sinusoidal", input_emb="sinusoidal", out_dim=dim_d)
@@ -235,6 +241,7 @@ if __name__ == "__main__":
     ax1.plot(Late_time_transformed, distance_ls, color=color)
     ax1.tick_params(axis='y', labelcolor=color)
     ax1.set_yscale('log')  # y軸を対数スケールに設定
+    ax1.grid(False)
 
     if dataset_name == "circle":
         ax1.axvline(x=215, color='green', linestyle='--', linewidth=2)
@@ -248,6 +255,7 @@ if __name__ == "__main__":
     ax2.set_ylabel('Probability of the particles outside tubular neighbourhood', color=color)
     ax2.plot(prob_means, color=color)
     ax2.tick_params(axis='y', labelcolor=color)
+    ax2.grid(True)
 
     plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit.png')
 
