@@ -218,6 +218,7 @@ def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100,
         nn_model.train()
         total_loss = 0
         for step, batch in enumerate(dataloader):
+            # print(f"step: {step}")
             batch = batch[0].to(device)
             dim_d = batch.shape[-1]
 

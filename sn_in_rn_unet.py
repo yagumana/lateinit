@@ -94,6 +94,7 @@ if __name__ == "__main__":
     is_train = config['is_train'] # if True, then train ddpm network
     batch_size = config['batch_size'] # testデータのbatch_size
     dataset_name = config['dataset_name'] # Todo: ellipse
+    dataset_path = config['dataset_path']
     R = config['R']
     r = config['r']
     denoise_model = config['denoise_model']
@@ -114,11 +115,14 @@ if __name__ == "__main__":
         if not os.path.exists(img_dir):
             os.makedirs(img_dir)
 
-
     # 訓練dataの生成　shape: (n, r)
     # dim_d次元のユークリッド空間に埋め込まれた2次元の単位円を生成
     if dataset_name == "circle":
         data = dataset.circle_dataset(n=Data_size, r=dim_d).numpy()
+    elif dataset_name == "circle_half":
+        data = dataset.circle_half_dataset(n=Data_size, r=dim_d).numpy()
+    elif dataset_name == "circle_two_injectivity":
+        data = dataset.circle_half_dataset2(n=Data_size, r=dim_d).numpy()
     elif dataset_name == "sphere":
         data = dataset.sphere_dataset(n=Data_size, r=dim_d).numpy()
     elif dataset_name == "sphere_notuniform":
@@ -128,7 +132,10 @@ if __name__ == "__main__":
     elif dataset_name == "ellipse":
         data = dataset.ellipse_dataset(n=Data_size, a=R, b=r, dim=dim_d).numpy()
     elif dataset_name == "embed_sphere":
-        data = dataset.embed_sphere_dataset(n=Data_size, dim_d=dim_d, dataset_path=args.dataset_path).detach().numpy()
+        data = dataset.embed_sphere_dataset(n=Data_size, dim_d=dim_d, dataset_path=dataset_path).detach().numpy()
+    # elif dataset_name == "embed_data":
+    #     data = dataset.embed_sphere_dataset(n=Data_size, dim_d=dim_d, dataset_path=dataset_path).detach().numpy()
+    # sys.exit()
 
     sde = model.VP_SDE_dim(beta_min=0.1, beta_max=20, N=Time_step, T=1)
 
@@ -167,6 +174,8 @@ if __name__ == "__main__":
     frames = []
     losses = []
 
+    # print(len(dataloader))
+    # sys.exit()
 
     if is_train == True:
         for i in range(5):

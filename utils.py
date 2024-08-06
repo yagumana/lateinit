@@ -26,7 +26,51 @@ def is_neighbour_2d(x):
         return True
     else:
         return False
+
+def is_neighbour_2d_2(x):
+    """
+    r=1, theta \in [pi/6, pi/3]の円の一部と、
+    r=2, theta \in [7*pi/6, 4*pi/3]の円の一部
+    を組み合わせた多様体の近傍判定
+    """
+    dim = len(x)
+    dis = 0
+
+    # atan2を使用して角度を計算
+    angle = np.arctan2(x[1], x[0])
+    # 角度が負の場合は2πを加えて0から2πの範囲に調整
+    if angle < 0:
+        angle += 2 * np.pi
     
+    if np.pi/6 <= angle <= np.pi/3:
+        d = np.abs(np.sqrt(x[0]**2 + x[1]**2) - 1)
+
+    elif 7*np.pi/6 <= angle <= 4*np.pi/3:
+        """
+        正確ではない（r=1の部分も加味すべき）が、管状近傍判定には影響しない (どうせ1以上になる)
+        """
+        d = np.min(np.abs(np.sqrt(x[0]**2 + x[1]**2) - 2))
+
+    elif np.pi/3 < angle < 7*np.pi/6:
+        d1 = np.sqrt((x[0]-1/2)**2 + (x[1]-np.sqrt(3)/2)**2)
+        d2 = np.sqrt((x[0]+np.sqrt(3))**2 + (x[1]+1)**2)
+        d = min(d1, d2)
+    
+    else :
+        d1 = np.sqrt((x[0]-np.sqrt(3)/2)**2 + (x[1]-1/2)**2)
+        d2 = np.sqrt((x[0]+1)**2 + (x[1]+np.sqrt(3))**2)
+        d = min(d1, d2)
+    
+    for i in range(2, dim):
+        dis += x[i]**2
+    
+    dis = np.sqrt(dis + d**2)
+
+    if dis < 1:
+        return True
+    else:
+        return False
+
 def is_neighbour_3d(x):
     dim = len(x)
     normal = 0 # 3次元の空間からの距離
@@ -272,6 +316,12 @@ def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21):
         for i in range(Data_size):
             if dataset_name == "circle":
                 if not is_neighbour_2d(Us[t][i]):
+                    cnt += 1
+            elif dataset_name == "circle_half":
+                if not is_neighbour_2d(Us[t][i]):
+                    cnt += 1
+            elif dataset_name == "circle_two_injectivity":
+                if not is_neighbour_2d_2(Us[t][i]):
                     cnt += 1
             elif dataset_name == "sphere" or dataset_name == "sphere_notuniform":
                 if not is_neighbour_3d(Us[t][i]):
