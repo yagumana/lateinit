@@ -7,7 +7,7 @@ late initializationを行い、各時刻ごとの管状近傍の割合と、wass
 
 ```
 # ddpmを訓練し、管状近傍の割合を求める
-python s2_in_rn.py --config /path/to/config
+python sn_in_rn.py --config /path/to/config
 ```
 ```
 # 訓練済みのddpmを用いて、late initializationによる評価を行う
