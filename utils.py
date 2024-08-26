@@ -286,18 +286,18 @@ def is_neighbour_ellipse(x, a=1, b=1):
     else:
         return False
 
-def is_neighbour_nd(x, dim_z=21):
+def is_neighbour_hypersphere(x, dim_z=21):
     dim = len(x)
     injective_R = 1
     total_dis = 0
 
     # 半径1のn次元球面からの距離の2乗を計算
-    for i in range(dim_z):
+    for i in range(dim_z+1):
         total_dis += x[i]**2
     total_dis = np.abs(total_dis-1)
 
     # n次元球面からの距離の2乗を計算
-    for i in range(dim_z, dim):
+    for i in range(dim_z+1, dim):
         total_dis += x[i]**2
     total_dis = np.sqrt(total_dis)
 
@@ -305,6 +305,7 @@ def is_neighbour_nd(x, dim_z=21):
         return True
     else:
         return False
+    
 
 def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21):
     Time_step, Data_size, dim = Us.shape
@@ -333,9 +334,12 @@ def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21):
                 if not is_neighbour_ellipse(Us[t][i], a=R, b=r):
                     cnt += 1
             elif dataset_name == "embed_sphere":
-                if not is_neighbour_nd(Us[t][i], dim_z):
+                if not is_neighbour_hypersphere(Us[t][i], dim_z):
                     cnt += 1
                 pass
+            elif dataset_name == "hyper_sphere":
+                if not is_neighbour_hypersphere(Us[t][i], dim_z):
+                    cnt += 1
             else:
                 print("Not implemented! check the dataset_name again!")     
                 sys.exit()       

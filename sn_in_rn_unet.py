@@ -83,6 +83,7 @@ if __name__ == "__main__":
     if args.denoise_model is not None:
         config['denoise_model'] = args.denoise_model
 
+
     wandb.init(config=config, project="ddpm")
 
     # デバイスの設定
@@ -91,6 +92,7 @@ if __name__ == "__main__":
     Time_step = config['time_step']
     Data_size = config['data_size']
     dim_d = config['dim_d'] # Euclidean space R^d
+    dim_z = config['dim_z'] # Sphere S^z
     is_train = config['is_train'] # if True, then train ddpm network
     batch_size = config['batch_size'] # testデータのbatch_size
     dataset_name = config['dataset_name'] # Todo: ellipse
@@ -133,9 +135,8 @@ if __name__ == "__main__":
         data = dataset.ellipse_dataset(n=Data_size, a=R, b=r, dim=dim_d).numpy()
     elif dataset_name == "embed_sphere":
         data = dataset.embed_sphere_dataset(n=Data_size, dim_d=dim_d, dataset_path=dataset_path).detach().numpy()
-    # elif dataset_name == "embed_data":
-    #     data = dataset.embed_sphere_dataset(n=Data_size, dim_d=dim_d, dataset_path=dataset_path).detach().numpy()
-    # sys.exit()
+    elif dataset_name == "hyper_sphere":
+        data = dataset.hyper_sphere_dataset(n=Data_size, r=dim_d, s=dim_z).numpy()
 
     sde = model.VP_SDE_dim(beta_min=0.1, beta_max=20, N=Time_step, T=1)
 
@@ -144,7 +145,7 @@ if __name__ == "__main__":
     print("Successfuly loaded Us_forward data!")
     print(f"Us.shape: {Us.shape}")
     print(f"dataset_name: {dataset_name}")
-    cnt_prob = utils.neighbourhood_cnt(Us, dataset_name, R=R, r=r) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
+    cnt_prob = utils.neighbourhood_cnt(Us, dataset_name, R=R, r=r, dim_z=dim_z) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
 
     plt.figure(figsize=(9, 6))
     plt.plot(cnt_prob, label='Currently Outside', color='b')
@@ -155,17 +156,9 @@ if __name__ == "__main__":
 
     plt.figure(figsize=(9, 6))
     plt.scatter(Us[0, :, 2], Us[0, :, 3])
-    # plt.xlim(-3, 3)
-    # plt.ylim(-3, 3)
     plt.savefig(f'images/{path_name}/r{dim_d}_forward_dim23_2.png')
 
-    # plt.figure(figsize=(9, 6))
-    # plt.scatter(Us[0, :, 4], Us[0, :, 23])
-    # # plt.xlim(-3, 3)
-    # # plt.ylim(-3, 3)
-    # plt.savefig(f'images/{path_name}/r{dim_d}_forward_dim423_2.png')
 
-    # sys.exit()
 
     tensor_data = TensorDataset(torch.tensor(data))
     dataloader = DataLoader(tensor_data, batch_size=32, shuffle=True, drop_last=True)
@@ -173,9 +166,6 @@ if __name__ == "__main__":
     global_step = 0
     frames = []
     losses = []
-
-    # print(len(dataloader))
-    # sys.exit()
 
     if is_train == True:
         for i in range(5):
@@ -188,11 +178,11 @@ if __name__ == "__main__":
             noise_scheduler = model.NoiseScheduler(num_timesteps=1000, beta_schedule="linear")
             optimizer = torch.optim.AdamW(nn_model.parameters(), lr=1e-3)
             print(f"training model_{i}...")
-            losses = model.train(nn_model, dataloader, noise_scheduler, optimizer, device=device, N_epoch=100, wandb=wandb)
-            print(f"losses: {losses}")
             if not os.path.exists(f'/workspace/weights'):
                 os.makedirs(f'/workspace/weights')
-            torch.save(nn_model.state_dict(), f'/workspace/weights/{path_name}_in_r{dim_d}_{i}.pth')
+            losses = model.train(nn_model, dataloader, noise_scheduler, optimizer, device=device, N_epoch=30, wandb=wandb, path_name=path_name, dim_d=dim_d, dim_z=dim_z, i=i)
+            print(f"losses: {losses}")
+            # torch.save(nn_model.state_dict(), f'/workspace/weights/{path_name}_in_r{dim_d}_{i}.pth')
         print("Successfuly trained ddpm model!")
 
     if denoise_model == "MLP":
@@ -208,7 +198,7 @@ if __name__ == "__main__":
     prob_ls_stacked = []
 
     for i in range(5):
-        prob_ls = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
+        prob_ls = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
 
         prob_ls_stacked.append(prob_ls)
 
