@@ -1,11 +1,14 @@
 time_step: 1000
 data_size: 50000
-dim_d: 16 # ambient space dimension of the hypersphere
-dim_z: 10 # latent space dimension of the hypersphere
+dim_d: 24 # ambient space dimension of the hypersphere
+dim_z: 20 # latent space dimension of the hypersphere
 is_train: True
 batch_size: 1000
 dataset_name: "embed_sphere"
-dataset_path: "/workspace/data/mnist/z_mean_S10.pt"
+dataset_path: "/workspace/data/fashion_mnist/z_mean_S20.pt"
 R: 3
 r: 1
 denoise_model : "Unet"
+
+# embed_sphere の場合にのみ指定されるフィールド
+embed_data: "fashion_mnist"  # 例えば、"type_a"や"type_b"など

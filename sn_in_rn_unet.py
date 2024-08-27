@@ -96,6 +96,8 @@ if __name__ == "__main__":
     is_train = config['is_train'] # if True, then train ddpm network
     batch_size = config['batch_size'] # testデータのbatch_size
     dataset_name = config['dataset_name'] # Todo: ellipse
+    if dataset_name == "embed_sphere":
+        embed_data = config['embed_data'] # hyperspherical vaeを用いて埋め込んだデータセット名(ex. mnist, fashion_mnist)
     dataset_path = config['dataset_path']
     R = config['R']
     r = config['r']
@@ -105,17 +107,36 @@ if __name__ == "__main__":
     print(f"Training mode is {'enabled' if is_train else 'disabled'}")
     print(f"Dataset name: {dataset_name}")
 
-    if dataset_name == "torus" or dataset_name == "ellipse":
-        base_path = os.getcwd()
+    base_path = os.getcwd()
+    if dataset_name == "embed_sphere":
+        path_name = embed_data
+    elif dataset_name == "torus" or dataset_name == "ellipse":
         path_name = dataset_name + str(R) + str(r)
-        img_dir = os.path.join(base_path, "images", path_name)
-        if not os.path.exists(img_dir):
+
+    img_dir = os.path.join(base_path, "images", path_name)
+    if not os.path.exists(img_dir):
             os.makedirs(img_dir)
-    else:
-        base_path = os.getcwd()
-        img_dir = os.path.join(base_path, "images", path_name)
-        if not os.path.exists(img_dir):
-            os.makedirs(img_dir)
+
+    # if dataset_name == "torus" or dataset_name == "ellipse":
+    #     base_path = os.getcwd()
+    #     path_name = dataset_name + str(R) + str(r)
+    #     img_dir = os.path.join(base_path, "images", path_name)
+    #     if not os.path.exists(img_dir):
+    #         os.makedirs(img_dir)
+
+    # elif dataset_name == "embed_sphere":
+    #     base_path = os.getcwd()
+    #     img_dir = os.path.join(base_path, "images", embed_data)
+    #     if not os.path.exists(img_dir):
+    #         os.makedirs(img_dir)
+
+    # else:
+    #     base_path = os.getcwd()
+    #     img_dir = os.path.join(base_path, "images", path_name)
+    #     if not os.path.exists(img_dir):
+    #         os.makedirs(img_dir)
+
+    
 
     # 訓練dataの生成　shape: (n, r)
     # dim_d次元のユークリッド空間に埋め込まれた2次元の単位円を生成
@@ -180,7 +201,7 @@ if __name__ == "__main__":
             print(f"training model_{i}...")
             if not os.path.exists(f'/workspace/weights'):
                 os.makedirs(f'/workspace/weights')
-            losses = model.train(nn_model, dataloader, noise_scheduler, optimizer, device=device, N_epoch=30, wandb=wandb, path_name=path_name, dim_d=dim_d, dim_z=dim_z, i=i)
+            losses = model.train(nn_model, dataloader, noise_scheduler, optimizer, device=device, N_epoch=25, wandb=wandb, path_name=path_name, dim_d=dim_d, dim_z=dim_z, i=i)
             print(f"losses: {losses}")
             # torch.save(nn_model.state_dict(), f'/workspace/weights/{path_name}_in_r{dim_d}_{i}.pth')
         print("Successfuly trained ddpm model!")
@@ -191,7 +212,7 @@ if __name__ == "__main__":
         nn_model = Unet1D(dim=dim_d).to(device)
 
     print("loading Us_backward data...")
-    Us_backward = model.load_experiments(roop=5, batch_size=1000, Time_step=1000, dim_d=dim_d, device=device, path_name=path_name, denoise_model=denoise_model)
+    Us_backward = model.load_experiments(roop=5, batch_size=1000, Time_step=1000, dim_d=dim_d, dim_z=dim_z, device=device, path_name=path_name, denoise_model=denoise_model)
     Us_backward = np.stack(Us_backward) # [Gauss noise, ..., S_1]
     print(f"Us_backward.shape: {Us_backward.shape}") 
 

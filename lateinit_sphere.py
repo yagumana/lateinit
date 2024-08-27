@@ -44,6 +44,7 @@ def parser_args():
     parser.add_argument('--dim_d', type=int)
     parser.add_argument('--dim_z', type=int)
     parser.add_argument('--dataset_name', type=str)
+    parser.add_argument('--dataset_path', type=str)
     parser.add_argument('--batch_size', type=int)
     parser.add_argument('--Roop', type=int)
     parser.add_argument('--Load_exp', action='store_true', help='If provided, Load experiment data')
@@ -71,7 +72,7 @@ def get_forward_Us(dim_d, dim_z=20, roop=5, dataset_name = "circle", num_timeste
     elif dataset_name == "ellipse":
         train_data = dataset.ellipse_dataset(n=8000, a=R, b=r, dim=dim_d).numpy()
     elif dataset_name == "embed_sphere":
-        train_data = dataset.embed_sphere_dataset(n=8000, dim_d=dim_d, dataset_path="./data/mnist/z_mean_S20.pt").detach().numpy()
+        train_data = dataset.embed_sphere_dataset(n=8000, dim_d=dim_d, dataset_path=dataset_path).detach().numpy()
     elif dataset_name == "hyper_sphere":
         train_data = dataset.hyper_sphere_dataset(n=8000, r=dim_d, s=dim_z).detach().numpy()
 
@@ -121,6 +122,8 @@ if __name__ == "__main__":
         config['dim_z'] = args.dim_z
     if args.dataset_name is not None:
         config['dataset_name'] = args.dataset_name
+    if args.dataset_path is not None:
+        config['dataset_path'] = args.dataset_path
     if args.batch_size is not None:
         config['batch_size'] = args.batch_size
     if args.Roop is not None:
@@ -147,6 +150,9 @@ if __name__ == "__main__":
     dim_d = config['dim_d']
     dim_z = config['dim_z']
     dataset_name = config['dataset_name']
+    if dataset_name == "embed_sphere":
+        embed_data = config['embed_data'] # hyperspherical vaeを用いて埋め込んだデータセット名(ex. mnist, fashion_mnist)
+    dataset_path = config['dataset_path']
     batch_size = config['batch_size']
     Roop = config['Roop']
     Load_exp = config['Load_exp']
@@ -159,10 +165,12 @@ if __name__ == "__main__":
     if dataset_name == "torus" or dataset_name == "ellipse":
         base_path = os.getcwd()
         path_name = dataset_name + str(R) + str(r)
+    if dataset_name == "embed_sphere":
+        path_name = embed_data
 
     # forwardのデータを取得
     if Load_exp == True:
-        print("loading Us forward data...")
+        print(f"loading Us forward data...{dataset_name}")
         Us_forward = get_forward_Us(dim_d=dim_d, dim_z=dim_z, roop=5, dataset_name=dataset_name, num_timesteps=Time_step, batch_size=batch_size)
         Us_forward = np.array(Us_forward)
         np.save(f"Us_data/forward_{path_name}_in_{dim_d}.npy", Us_forward)
@@ -173,7 +181,7 @@ if __name__ == "__main__":
     # backwardのデータを取得
     if Load_exp == True:
         print("loading Us backward data...")
-        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
+        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
         Us_backward = np.array(Us_backward)
         Us_backward = Us_backward[:, ::-1, :, :] # Us_backwardを逆順にして、Us_forwradに合わせる
 
