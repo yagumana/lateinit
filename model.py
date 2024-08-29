@@ -209,7 +209,7 @@ class NoiseScheduler():
         return self.num_timesteps
     
 
-def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100, wandb=None):
+def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100, wandb=None, path_name="sphere", dim_d=7, dim_z=10, i=0):
     global_step = 0
     frames = []
     losses = []
@@ -217,6 +217,8 @@ def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100,
     for epoch in tqdm(range(N_epoch)):
         nn_model.train()
         total_loss = 0
+        best_loss = 1000
+        steps = 0
         for step, batch in enumerate(dataloader):
             # print(f"step: {step}")
             batch = batch[0].to(device)
@@ -242,8 +244,13 @@ def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100,
             optimizer.step()
             optimizer.zero_grad()
 
+            steps += 1
+
         total_loss += loss.detach().item()
-        avg_loss = total_loss / len(dataloader)
+        avg_loss = total_loss / steps
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            torch.save(nn_model.state_dict(), f'/workspace/weights/{path_name}_in_r{dim_d}_s{dim_z}_{i}.pth')
         losses.append(avg_loss)
         if wandb:
             wandb.log({'epoch': epoch, 'loss': avg_loss})
@@ -271,7 +278,7 @@ def get_denoise_data(nn_model, noise_scheduler, device, N=1000, batch_size=1000,
         data_list[i] = sample.squeeze(1).cpu().numpy()
     return data_list
 
-def load_experiments(device=None, roop=5, batch_size=1000, Time_step = 1000, dim_d=7, late=0, path_name="sphere", denoise_model="MLP"):
+def load_experiments(device=None, roop=5, batch_size=1000, Time_step = 1000, dim_d=7, dim_z=7, late=0, path_name="sphere", denoise_model="MLP"):
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -287,7 +294,7 @@ def load_experiments(device=None, roop=5, batch_size=1000, Time_step = 1000, dim
 
         # load pretrained weights
         print(f"loading pretrained weight_{i}...")
-        nn_model.load_state_dict(torch.load(f'/workspace/weights/{path_name}_in_r{dim_d}_{i}.pth', map_location=device))
+        nn_model.load_state_dict(torch.load(f'/workspace/weights/{path_name}_in_r{dim_d}_s{dim_z}_{i}.pth', map_location=device))
         
         if late==0:
             data_list = get_denoise_data(nn_model, noise_scheduler, batch_size=batch_size, dim=dim_d, device=device, late=late)

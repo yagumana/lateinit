@@ -42,7 +42,9 @@ def parser_args():
     parser.add_argument('--Late_time', type=list, help='Late time')
     parser.add_argument('--data_size', type=int)
     parser.add_argument('--dim_d', type=int)
+    parser.add_argument('--dim_z', type=int)
     parser.add_argument('--dataset_name', type=str)
+    parser.add_argument('--dataset_path', type=str)
     parser.add_argument('--batch_size', type=int)
     parser.add_argument('--Roop', type=int)
     parser.add_argument('--Load_exp', action='store_true', help='If provided, Load experiment data')
@@ -54,7 +56,7 @@ def parser_args():
     args = parser.parse_args()
     return args
 
-def get_forward_Us(dim_d, roop=5, dataset_name = "circle", num_timesteps=1000, batch_size=1000):
+def get_forward_Us(dim_d, dim_z=20, roop=5, dataset_name = "circle", num_timesteps=1000, batch_size=1000):
     if dataset_name == "circle":
         train_data = dataset.circle_dataset(8000, dim_d)
     elif dataset_name == "circle_half":
@@ -70,7 +72,9 @@ def get_forward_Us(dim_d, roop=5, dataset_name = "circle", num_timesteps=1000, b
     elif dataset_name == "ellipse":
         train_data = dataset.ellipse_dataset(n=8000, a=R, b=r, dim=dim_d).numpy()
     elif dataset_name == "embed_sphere":
-        train_data = dataset.embed_sphere_dataset(n=8000, dim_d=dim_d, dataset_path="./data/mnist/z_mean_S20.pt").detach().numpy()
+        train_data = dataset.embed_sphere_dataset(n=8000, dim_d=dim_d, dataset_path=dataset_path).detach().numpy()
+    elif dataset_name == "hyper_sphere":
+        train_data = dataset.hyper_sphere_dataset(n=8000, r=dim_d, s=dim_z).detach().numpy()
 
     dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, drop_last=True)
     nn_model = model.MLP(hidden_size=128, hidden_layers=3, emb_size=128, time_emb="sinusoidal", input_emb="sinusoidal", out_dim=dim_d)
@@ -114,8 +118,12 @@ if __name__ == "__main__":
         config['data_size'] = args.data_size
     if args.dim_d is not None:
         config['dim_d'] = args.dim_d
+    if args.dim_z is not None:
+        config['dim_z'] = args.dim_z
     if args.dataset_name is not None:
         config['dataset_name'] = args.dataset_name
+    if args.dataset_path is not None:
+        config['dataset_path'] = args.dataset_path
     if args.batch_size is not None:
         config['batch_size'] = args.batch_size
     if args.Roop is not None:
@@ -140,7 +148,11 @@ if __name__ == "__main__":
     Late_time_transformed = [Time_step - t for t in Late_time]
     Data_size = config['data_size']
     dim_d = config['dim_d']
+    dim_z = config['dim_z']
     dataset_name = config['dataset_name']
+    if dataset_name == "embed_sphere":
+        embed_data = config['embed_data'] # hyperspherical vaeを用いて埋め込んだデータセット名(ex. mnist, fashion_mnist)
+    dataset_path = config['dataset_path']
     batch_size = config['batch_size']
     Roop = config['Roop']
     Load_exp = config['Load_exp']
@@ -153,11 +165,13 @@ if __name__ == "__main__":
     if dataset_name == "torus" or dataset_name == "ellipse":
         base_path = os.getcwd()
         path_name = dataset_name + str(R) + str(r)
+    if dataset_name == "embed_sphere":
+        path_name = embed_data
 
     # forwardのデータを取得
     if Load_exp == True:
-        print("loading Us forward data...")
-        Us_forward = get_forward_Us(dim_d=dim_d, roop=5, dataset_name=dataset_name, num_timesteps=Time_step, batch_size=batch_size)
+        print(f"loading Us forward data...{dataset_name}")
+        Us_forward = get_forward_Us(dim_d=dim_d, dim_z=dim_z, roop=5, dataset_name=dataset_name, num_timesteps=Time_step, batch_size=batch_size)
         Us_forward = np.array(Us_forward)
         np.save(f"Us_data/forward_{path_name}_in_{dim_d}.npy", Us_forward)
     Us_forward = np.load(f"Us_data/forward_{path_name}_in_{dim_d}.npy")
@@ -167,7 +181,7 @@ if __name__ == "__main__":
     # backwardのデータを取得
     if Load_exp == True:
         print("loading Us backward data...")
-        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
+        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
         Us_backward = np.array(Us_backward)
         Us_backward = Us_backward[:, ::-1, :, :] # Us_backwardを逆順にして、Us_forwradに合わせる
 
@@ -177,7 +191,7 @@ if __name__ == "__main__":
     print("Successufuly Loaded Us_backward data!")
 
     for i in range(Roop):
-        cnt_prob = utils.neighbourhood_cnt(Us_forward[i], dataset_name, R=R, r=r)
+        cnt_prob = utils.neighbourhood_cnt(Us_forward[i], dataset_name, R=R, r=r, dim_z=dim_z)
 
         plt.figure(figsize=(9, 6))
         plt.plot(cnt_prob, label='Currently Outside', color='b')
@@ -187,7 +201,7 @@ if __name__ == "__main__":
         plt.savefig(f'images/{path_name}/r{dim_d}_forward_{i}.png')
 
     for i in range(Roop):
-        cnt_prob = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r)
+        cnt_prob = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z)
 
         plt.figure(figsize=(9, 6))
         plt.plot(cnt_prob, label='Currently Outside', color='b')
@@ -201,7 +215,7 @@ if __name__ == "__main__":
 
     distance_ls = []
     for i in range(len(Late_time)):
-        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=Late_time[i], path_name=path_name, denoise_model=denoise_model)
+        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=Late_time[i], path_name=path_name, dim_z=dim_z, denoise_model=denoise_model)
         Us_backward = np.array(Us_backward)
         Us_backward = Us_backward[:, ::-1, :, :]
         ls = []
@@ -219,12 +233,12 @@ if __name__ == "__main__":
 
     # backward processにおける管状近傍の外にある粒子の割合を評価
     prob_ls_stacked = []
-    Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
+    Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
     Us_backward = np.array(Us_backward)
     Us_backward = Us_backward[:, ::-1, :, :]
 
     for i in range(5):
-        prob_ls = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r)
+        prob_ls = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z)
         prob_ls_stacked.append(prob_ls)
 
 
@@ -235,13 +249,13 @@ if __name__ == "__main__":
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
     # 左側の軸に対して distance_ls をプロット
-    color = 'tab:blue'
-    ax1.set_xlabel('Index')
+    color = 'tab:blue' 
+    ax1.set_xlabel('Time step')
     ax1.set_ylabel('Wasserstein Distance', color=color)
     ax1.plot(Late_time_transformed, distance_ls, color=color)
     ax1.tick_params(axis='y', labelcolor=color)
     ax1.set_yscale('log')  # y軸を対数スケールに設定
-    ax1.grid(False)
+    ax1.grid(True, which='both', axis='both', zorder=1)
 
     if dataset_name == "circle":
         ax1.axvline(x=215, color='green', linestyle='--', linewidth=2)
@@ -253,9 +267,10 @@ if __name__ == "__main__":
     ax2 = ax1.twinx()  # 2つ目の軸を生成
     color = 'tab:red'
     ax2.set_ylabel('Probability of the particles outside tubular neighbourhood', color=color)
+    ax2.fill_between(range(len(prob_means)), prob_means - prob_stds, prob_means + prob_stds, color='gray', alpha=0.2)
     ax2.plot(prob_means, color=color)
     ax2.tick_params(axis='y', labelcolor=color)
-    ax2.grid(True)
+    ax2.grid(True, which='both', axis='both', zorder=1)
 
     plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit.png')
 

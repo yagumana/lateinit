@@ -126,6 +126,26 @@ def sphere_dataset_notuniform(n=8000, r=4, noise_level=0.01):
 
     return torch.from_numpy(embedding.astype(np.float32))
 
+def hyper_sphere_dataset(n=8000, r=48, s=20, noise_level=0.01):
+    """
+    r: ambiet space, s: sphere dimension
+    21次元のランダムなベクトルをn個生成して、半径1の超球面にマッピング
+    """
+    # n個のランダムなベクトルを生成
+    random_vec = np.random.randn(n, s+1)
+
+    # 各ベクトルを正規化
+    norm = np.linalg.norm(random_vec, axis=1, keepdims=True)
+    unit_vec = random_vec / norm
+
+    # r次元のユークリッド空間に埋め込む
+    embedding = np.zeros((n, r))
+    embedding[:, :s+1] = unit_vec
+
+    return torch.from_numpy(embedding.astype(np.float32))
+
+
+
 # トーラスのdatasetを作成して表示
 def torus_dataset(n=8000, R=2, r=1, dim=7, noise_level=0.01):
     rng = np.random.default_rng(42)
