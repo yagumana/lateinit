@@ -72,7 +72,7 @@ def get_forward_Us(dim_d, dim_z=20, roop=5, dataset_name = "circle", num_timeste
     elif dataset_name == "ellipse":
         train_data = dataset.ellipse_dataset(n=8000, a=R, b=r, dim=dim_d).numpy()
     elif dataset_name == "embed_sphere":
-        train_data = dataset.embed_sphere_dataset(n=8000, dim_d=dim_d, dataset_path=dataset_path).detach().numpy()
+        train_data = dataset.embed_sphere_dataset(n=50000, dim_d=dim_d, dataset_path=dataset_path).detach().numpy()
     elif dataset_name == "hyper_sphere":
         train_data = dataset.hyper_sphere_dataset(n=8000, r=dim_d, s=dim_z).detach().numpy()
 
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     # forwardのデータを取得
     if Load_exp == True:
         print(f"loading Us forward data...{dataset_name}")
-        Us_forward = get_forward_Us(dim_d=dim_d, dim_z=dim_z, roop=5, dataset_name=dataset_name, num_timesteps=Time_step, batch_size=batch_size)
+        Us_forward = get_forward_Us(dim_d=dim_d, dim_z=dim_z, roop=Roop, dataset_name=dataset_name, num_timesteps=Time_step, batch_size=batch_size)
         Us_forward = np.array(Us_forward)
         np.save(f"Us_data/forward_{path_name}_in_{dim_d}.npy", Us_forward)
     Us_forward = np.load(f"Us_data/forward_{path_name}_in_{dim_d}.npy")
@@ -181,7 +181,7 @@ if __name__ == "__main__":
     # backwardのデータを取得
     if Load_exp == True:
         print("loading Us backward data...")
-        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
+        Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
         Us_backward = np.array(Us_backward)
         Us_backward = Us_backward[:, ::-1, :, :] # Us_backwardを逆順にして、Us_forwradに合わせる
 
@@ -215,11 +215,11 @@ if __name__ == "__main__":
 
     distance_ls = []
     for i in range(len(Late_time)):
-        Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=Late_time[i], path_name=path_name, dim_z=dim_z, denoise_model=denoise_model)
+        Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=Late_time[i], path_name=path_name, dim_z=dim_z, denoise_model=denoise_model)
         Us_backward = np.array(Us_backward)
         Us_backward = Us_backward[:, ::-1, :, :]
         ls = []
-        for j in range(5):
+        for j in range(Roop):
             cost_matrix = ot.dist(Us_forward[j, 0], Us_backward[j, 0])
             a = np.ones(Us_forward[j][0].shape[0]) / Us_forward[j][0].shape[0]
             b = np.ones(Us_backward[j][0].shape[0]) / Us_backward[j][0].shape[0]
@@ -233,17 +233,33 @@ if __name__ == "__main__":
 
     # backward processにおける管状近傍の外にある粒子の割合を評価
     prob_ls_stacked = []
-    Us_backward = model.load_experiments(roop=5, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
+    Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
     Us_backward = np.array(Us_backward)
     Us_backward = Us_backward[:, ::-1, :, :]
 
-    for i in range(5):
+    for i in range(Roop):
         prob_ls = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z)
         prob_ls_stacked.append(prob_ls)
+
+    # dis_ls の最後の値の 1.2 倍を計算
+    target_value = distance_ls[0] * 1.1
+    # target_value 以上の最後のインデックスを見つける
+    index = np.argmax(distance_ls >= target_value) - 1
+    # index に対応する Late_time_transformed の値を取得
+    target_time = Late_time_transformed[index]
+    print(target_time)
 
 
     prob_means = np.mean(prob_ls_stacked, axis=0)
     prob_stds = np.std(prob_ls_stacked, axis=0)
+
+    # prob_means が 0.95, 0.99, 0.999 以下になる最初のインデックスを探す
+    index_95 = np.argmax(prob_means > 0.95)
+    index_99 = np.argmax(prob_means > 0.99)
+    index_999 = np.argmax(prob_means > 0.999)
+    print(index_95)
+    print(index_99)
+    print(index_999)
 
     # グラフの描画
     fig, ax1 = plt.subplots(figsize=(10, 6))
@@ -257,11 +273,16 @@ if __name__ == "__main__":
     ax1.set_yscale('log')  # y軸を対数スケールに設定
     ax1.grid(True, which='both', axis='both', zorder=1)
 
-    if dataset_name == "circle":
-        ax1.axvline(x=215, color='green', linestyle='--', linewidth=2)
-    elif dataset_name == "sphere":
-        # 横軸177に縦線を引く
-        ax1.axvline(x=177, color='green', linestyle='--', linewidth=2)
+    # target_time に対応する位置に青色の垂直線を引く
+    ax1.axvline(x=target_time, color=color, linestyle='--', label=f'Target Time: {target_time}')
+
+    
+
+    # if dataset_name == "circle":
+    #     ax1.axvline(x=215, color='green', linestyle='--', linewidth=2)
+    # elif dataset_name == "sphere":
+    #     # 横軸177に縦線を引く
+    #     ax1.axvline(x=177, color='green', linestyle='--', linewidth=2)
 
     # 右側の軸に対して prob_ls をプロット
     ax2 = ax1.twinx()  # 2つ目の軸を生成
@@ -271,6 +292,15 @@ if __name__ == "__main__":
     ax2.plot(prob_means, color=color)
     ax2.tick_params(axis='y', labelcolor=color)
     ax2.grid(True, which='both', axis='both', zorder=1)
+
+    # 追加: prob_means が 0.95, 0.99, 0.999 以下になるインデックスに垂直線を描画
+    ax2.axvline(x=index_95, color='orange', linestyle='--', linewidth=2, label='0.95 Threshold')
+    ax2.axvline(x=index_99, color='purple', linestyle='--', linewidth=2, label='0.99 Threshold')
+    ax2.axvline(x=index_999, color='brown', linestyle='--', linewidth=2, label='0.999 Threshold')
+
+    # レジェンドの表示
+    ax2.legend(loc='upper right')    
+
 
     plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit.png')
 

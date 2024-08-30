@@ -47,3 +47,6 @@ pdf2image
 opencv-python-headless
 
 pot
+einops
+ema_pytorch
+accelerate
