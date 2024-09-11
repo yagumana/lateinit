@@ -2,7 +2,10 @@
 docker build -t manato.yaguchi_ddpm_experiments .
 
 # dockerコンテナを起動するコマンド
-docker container run -v /home/manato.yaguchi/diffusion/ddpm_experiments:/workspace --gpus "device=1" -it --name manato.yaguchi_ddpm_experiments manato.yaguchi_ddpm_experiments
+docker container run -v /home/manato.yaguchi/lateinit:/workspace --gpus "device=2" -it --name manato.yaguchi_ddpm_experiments manato.yaguchi_ddpm_experiments
+
+docker container run -v /home/manato.yaguchi/lateinit:/workspace --gpus "device=1" -it --name manato.yaguchi_ddpm_experiments_S2 manato.yaguchi_ddpm_experiments
+
 
 # すでに起動済みのdockerコンテナに対話シェルを通して操作するコマンド
 docker exec -it manato.yaguchi_ddpm_experiments /bin/bash

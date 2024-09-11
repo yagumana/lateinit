@@ -1,0 +1,17 @@
+time_step: 1000
+Late_time: [0, 100, 200, 300, 400, 500, 600, 650, 700, 725, 750, 775, 800, 810, 820, 830, 840, 850, 860, 870, 880, 890, 900, 910, 920, 930, 940, 950, 960, 970, 980, 990, 999]
+# Late_time: [0, 100, 500, 600, 800, 990, 999]
+data_size: 50000 # Todo：使わないので消す
+dim_d: 16
+dim_z: 10
+dataset_name: "ellipse"
+dataset_path: "/workspace/data/fashion_mnist/z_mean_S10_cnn.pt"
+batch_size: 1000
+Roop: 5
+Load_exp: True
+R: 2
+r: 1
+denoise_model : "Unet"
+
+# embed_sphere の場合にのみ指定されるフィールド
+embed_data: "fashion_mnist"  # 例えば、"type_a"や"type_b"など

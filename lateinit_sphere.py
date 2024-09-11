@@ -213,6 +213,37 @@ if __name__ == "__main__":
     print(f"Us_forward.shape: {Us_forward.shape}")
     print(f"Us_backward.shape: {Us_backward.shape}")
 
+    # backward processにおける管状近傍の外にある粒子の割合を評価
+    prob_ls_stacked = []
+    Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
+    Us_backward = np.array(Us_backward)
+    Us_backward = Us_backward[:, ::-1, :, :]
+
+    for i in range(Roop):
+        prob_ls = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z)
+        prob_ls_stacked.append(prob_ls)
+
+    prob_means = np.mean(prob_ls_stacked, axis=0)
+    prob_stds = np.std(prob_ls_stacked, axis=0)
+
+    # prob_means が 0.95, 0.99, 0.999 以下になる最初のインデックスを探す
+    index_10 = np.argmax(prob_means > 0.1)
+    index_50 = np.argmax(prob_means > 0.5)
+    index_90 = np.argmax(prob_means > 0.9)
+    index_95 = np.argmax(prob_means > 0.95)
+    index_99 = np.argmax(prob_means > 0.99)
+    index_999 = np.argmax(prob_means > 0.999)
+    print(index_10)
+    print(index_50)
+    print(index_90)
+    print(index_95)
+    print(index_99)
+    print(index_999)
+
+    # defaultのLate_timeに、index_95, index_99, index_999 に対応する時間を追加
+    Late_time.extend([1000-index_10, 1000-index_50, 1000-index_90, 1000-index_95, 1000-index_99, 1000-index_999])
+
+
     distance_ls = []
     for i in range(len(Late_time)):
         Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=Late_time[i], path_name=path_name, dim_z=dim_z, denoise_model=denoise_model)
@@ -230,19 +261,11 @@ if __name__ == "__main__":
         distance_ls.append(np.mean(ls))
     print(distance_ls)
 
-
-    # backward processにおける管状近傍の外にある粒子の割合を評価
-    prob_ls_stacked = []
-    Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
-    Us_backward = np.array(Us_backward)
-    Us_backward = Us_backward[:, ::-1, :, :]
-
-    for i in range(Roop):
-        prob_ls = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z)
-        prob_ls_stacked.append(prob_ls)
+    # distance_lsのうち、index_95, 99, 999に対応する最後の3つの値を消す
+    distance_ls = distance_ls[:-6]
 
     # dis_ls の最後の値の 1.2 倍を計算
-    target_value = distance_ls[0] * 1.1
+    target_value = distance_ls[0] * 1.2
     # target_value 以上の最後のインデックスを見つける
     index = np.argmax(distance_ls >= target_value) - 1
     # index に対応する Late_time_transformed の値を取得
@@ -250,23 +273,15 @@ if __name__ == "__main__":
     print(target_time)
 
 
-    prob_means = np.mean(prob_ls_stacked, axis=0)
-    prob_stds = np.std(prob_ls_stacked, axis=0)
 
-    # prob_means が 0.95, 0.99, 0.999 以下になる最初のインデックスを探す
-    index_95 = np.argmax(prob_means > 0.95)
-    index_99 = np.argmax(prob_means > 0.99)
-    index_999 = np.argmax(prob_means > 0.999)
-    print(index_95)
-    print(index_99)
-    print(index_999)
+    
 
     # グラフの描画
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
     # 左側の軸に対して distance_ls をプロット
     color = 'tab:blue' 
-    ax1.set_xlabel('Time step')
+    ax1.set_xlabel('Diffusion Time')
     ax1.set_ylabel('Wasserstein Distance', color=color)
     ax1.plot(Late_time_transformed, distance_ls, color=color)
     ax1.tick_params(axis='y', labelcolor=color)
@@ -274,7 +289,7 @@ if __name__ == "__main__":
     ax1.grid(True, which='both', axis='both', zorder=1)
 
     # target_time に対応する位置に青色の垂直線を引く
-    ax1.axvline(x=target_time, color=color, linestyle='--', label=f'Target Time: {target_time}')
+    # ax1.axvline(x=target_time, color=color, linestyle='--', label=f'Target Time: {target_time}')
 
     
 
