@@ -170,17 +170,17 @@ if __name__ == "__main__":
 
     # forwardのデータを取得
     if Load_exp == True:
-        print(f"loading Us forward data...{dataset_name}")
+        logging.info(f"loading Us forward data...{dataset_name}")
         Us_forward = get_forward_Us(dim_d=dim_d, dim_z=dim_z, roop=Roop, dataset_name=dataset_name, num_timesteps=Time_step, batch_size=batch_size)
         Us_forward = np.array(Us_forward)
         np.save(f"Us_data/forward_{path_name}_in_{dim_d}.npy", Us_forward)
     Us_forward = np.load(f"Us_data/forward_{path_name}_in_{dim_d}.npy")
     # Us_forward = Us_forward.tolist()
-    print("Successufuly Loaded Us_forward data!")
+    logging.info("Successufuly Loaded Us_forward data!")
 
     # backwardのデータを取得
     if Load_exp == True:
-        print("loading Us backward data...")
+        logging.info("loading Us backward data...")
         Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
         Us_backward = np.array(Us_backward)
         Us_backward = Us_backward[:, ::-1, :, :] # Us_backwardを逆順にして、Us_forwradに合わせる
@@ -188,7 +188,7 @@ if __name__ == "__main__":
         np.save(f"Us_data/backward_{path_name}_in_{dim_d}.npy", Us_backward)
     Us_backward = np.load(f"Us_data/backward_{path_name}_in_{dim_d}.npy")
     # Us_backward = Us_backward.tolist()
-    print("Successufuly Loaded Us_backward data!")
+    logging.info("Successufuly Loaded Us_backward data!")
 
     for i in range(Roop):
         cnt_prob = utils.neighbourhood_cnt(Us_forward[i], dataset_name, R=R, r=r, dim_z=dim_z)
@@ -210,8 +210,8 @@ if __name__ == "__main__":
         plt.grid(True)
         plt.savefig(f'images/{path_name}/r{dim_d}_backward_{i}.png')
 
-    print(f"Us_forward.shape: {Us_forward.shape}")
-    print(f"Us_backward.shape: {Us_backward.shape}")
+    logging.info(f"Us_forward.shape: {Us_forward.shape}")
+    logging.info(f"Us_backward.shape: {Us_backward.shape}")
 
     # backward processにおける管状近傍の外にある粒子の割合を評価
     prob_ls_stacked = []
@@ -233,12 +233,12 @@ if __name__ == "__main__":
     index_95 = np.argmax(prob_means > 0.95)
     index_99 = np.argmax(prob_means > 0.99)
     index_999 = np.argmax(prob_means > 0.999)
-    print(index_10)
-    print(index_50)
-    print(index_90)
-    print(index_95)
-    print(index_99)
-    print(index_999)
+    logging.info(f"index_10: {index_10}")
+    logging.info(f"index_50: {index_50}")
+    logging.info(f"index_90: {index_90}")
+    logging.info(f"index_95: {index_95}")
+    logging.info(f"index_99: {index_99}")
+    logging.info(f"index_999: {index_999}")
 
     # defaultのLate_timeに、index_95, index_99, index_999 に対応する時間を追加
     Late_time.extend([1000-index_10, 1000-index_50, 1000-index_90, 1000-index_95, 1000-index_99, 1000-index_999])
@@ -259,7 +259,7 @@ if __name__ == "__main__":
             ls.append(distance)
         ls = np.array(ls)
         distance_ls.append(np.mean(ls))
-    print(distance_ls)
+    logging.info(distance_ls)
 
     # distance_lsのうち、index_95, 99, 999に対応する最後の3つの値を消す
     distance_ls = distance_ls[:-6]
@@ -270,7 +270,7 @@ if __name__ == "__main__":
     index = np.argmax(distance_ls >= target_value) - 1
     # index に対応する Late_time_transformed の値を取得
     target_time = Late_time_transformed[index]
-    print(target_time)
+    logging.info(target_time)
 
 
 

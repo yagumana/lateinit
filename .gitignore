@@ -5,3 +5,4 @@ data
 score_data
 wandb
 *.pyc
+*.log

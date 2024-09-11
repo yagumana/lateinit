@@ -256,7 +256,7 @@ def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100,
             wandb.log({'epoch': epoch, 'loss': avg_loss})
         
         # エポックごとにlossを出力
-        print(f"Epoch [{epoch+1}/{N_epoch}], Loss: {avg_loss:.4f}")
+        logging.info(f"Epoch [{epoch+1}/{N_epoch}], Loss: {avg_loss:.4f}")
 
     return losses
     
@@ -293,7 +293,7 @@ def load_experiments(device=None, roop=5, batch_size=1000, Time_step = 1000, dim
         noise_scheduler = NoiseScheduler(num_timesteps=Time_step, beta_schedule="linear")
 
         # load pretrained weights
-        print(f"loading pretrained weight_{i}...")
+        logging.info(f"loading pretrained weight_{i}...")
         nn_model.load_state_dict(torch.load(f'/workspace/weights/{path_name}_in_r{dim_d}_s{dim_z}_{i}.pth', map_location=device))
         
         if late==0:

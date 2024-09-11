@@ -2,6 +2,9 @@ import numpy as np
 import torch
 import random
 import sys
+import logging
+import os
+from datetime import datetime
 
 # def compute_euclidean_distances(a, b):
 #     dim = len(a)
@@ -310,7 +313,7 @@ def is_neighbour_hypersphere(x, dim_z=21):
 def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21):
     Time_step, Data_size, dim = Us.shape
     cnt_prob = []
-    print(f"dataset_name: {dataset_name}")
+    logging.info(f"dataset_name: {dataset_name}")
 
     for t in range(Time_step):
         cnt = 0
@@ -341,7 +344,7 @@ def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21):
                 if not is_neighbour_hypersphere(Us[t][i], dim_z):
                     cnt += 1
             else:
-                print("Not implemented! check the dataset_name again!")     
+                logging.info("Not implemented! check the dataset_name again!")     
                 sys.exit()       
 
         cnt_prob.append(cnt/Data_size)
@@ -356,3 +359,22 @@ def set_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+
+def setup_logging(log_filename):
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+    
+    # タイムスタンプを取得してファイル名に追加
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_filename_with_timestamp = f"{log_filename}_{timestamp}.log"
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(f"logs/{log_filename_with_timestamp}"), # タイムスタンプ付きファイル名
+            logging.StreamHandler()
+        ]
+    )
+    logging.info(f"Logging to file: {log_filename_with_timestamp}")
