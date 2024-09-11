@@ -1,4 +1,10 @@
+# 標準ライブラリ
 import os
+import sys
+import argparse
+import logging
+
+# サードパーティライブラリ
 import torch
 from tqdm import tqdm
 import numpy as np
@@ -9,19 +15,18 @@ from cycler import cycler
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from matplotlib.ticker import FormatStrFormatter
-
-import dataset
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 from torch.nn import functional as F
 from torch import nn
 import ot
+import yaml
+import wandb
+
+# 自作ライブラリ
+import dataset
 import model
 import utils
-import yaml
-import argparse
-import wandb
-import sys
 
 """
 すでに訓練済みのddpmの重みが存在することを前提にする. (s1_in_r3.pyファイルを参照)
@@ -55,6 +60,36 @@ def parser_args():
 
     args = parser.parse_args()
     return args
+
+def update_config_with_args(config, args):
+    if args.time_step is not None:
+        config['time_step'] = args.time_step
+    if args.Late_time is not None:
+        config['Late_time'] = args.Late_time
+    if args.data_size is not None:
+        config['data_size'] = args.data_size
+    if args.dim_d is not None:
+        config['dim_d'] = args.dim_d
+    if args.dim_z is not None:
+        config['dim_z'] = args.dim_z
+    if args.dataset_name is not None:
+        config['dataset_name'] = args.dataset_name
+    if args.dataset_path is not None:
+        config['dataset_path'] = args.dataset_path
+    if args.batch_size is not None:
+        config['batch_size'] = args.batch_size
+    if args.Roop is not None:
+        config['Roop'] = args.Roop
+    if args.Load_exp:
+        config['Load_exp'] = True
+    if args.R is not None:
+        config['R'] = args.R
+    if args.r is not None:
+        config['r'] = args.r
+    if args.denoise_model is not None:
+        config['denoise_model'] = args.denoise_model
+
+    return config
 
 def get_forward_Us(dim_d, dim_z=20, roop=5, dataset_name = "circle", num_timesteps=1000, batch_size=1000):
     if dataset_name == "circle":
@@ -105,37 +140,49 @@ def get_forward_Us(dim_d, dim_z=20, roop=5, dataset_name = "circle", num_timeste
     return Us_forward
 
 if __name__ == "__main__":
+
+    # 引数を取得
     args = parser_args()
+
+    # ログのセットアップ (ログファイル名はここで指定)
+    log_filename = "lateinit.log"
+    utils.setup_logging(log_filename)
 
     # yamlファイルから設定を読み込む
     config = load_config(args.config)
 
-    if args.time_step is not None:
-        config['time_step'] = args.time_step
-    if args.Late_time is not None:
-        config['Late_time'] = args.Late_time
-    if args.data_size is not None:
-        config['data_size'] = args.data_size
-    if args.dim_d is not None:
-        config['dim_d'] = args.dim_d
-    if args.dim_z is not None:
-        config['dim_z'] = args.dim_z
-    if args.dataset_name is not None:
-        config['dataset_name'] = args.dataset_name
-    if args.dataset_path is not None:
-        config['dataset_path'] = args.dataset_path
-    if args.batch_size is not None:
-        config['batch_size'] = args.batch_size
-    if args.Roop is not None:
-        config['Roop'] = args.Roop
-    if args.Load_exp:
-        config['Load_exp'] = True
-    if args.R is not None:
-        config['R'] = args.R
-    if args.r is not None:
-        config['r'] = args.r
-    if args.denoise_model is not None:
-        config['denoise_model'] = args.denoise_model
+    # 設定の上書き処理
+    config = update_config_with_args(config, args)
+
+    # ログのコンフィグの確認
+    logging.info(f"Config loaded: {config}")
+
+    # if args.time_step is not None:
+    #     config['time_step'] = args.time_step
+    # if args.Late_time is not None:
+    #     config['Late_time'] = args.Late_time
+    # if args.data_size is not None:
+    #     config['data_size'] = args.data_size
+    # if args.dim_d is not None:
+    #     config['dim_d'] = args.dim_d
+    # if args.dim_z is not None:
+    #     config['dim_z'] = args.dim_z
+    # if args.dataset_name is not None:
+    #     config['dataset_name'] = args.dataset_name
+    # if args.dataset_path is not None:
+    #     config['dataset_path'] = args.dataset_path
+    # if args.batch_size is not None:
+    #     config['batch_size'] = args.batch_size
+    # if args.Roop is not None:
+    #     config['Roop'] = args.Roop
+    # if args.Load_exp:
+    #     config['Load_exp'] = True
+    # if args.R is not None:
+    #     config['R'] = args.R
+    # if args.r is not None:
+    #     config['r'] = args.r
+    # if args.denoise_model is not None:
+    #     config['denoise_model'] = args.denoise_model
     
     wandb.init(config=config, project="late initialization")
 
@@ -201,7 +248,7 @@ if __name__ == "__main__":
         plt.savefig(f'images/{path_name}/r{dim_d}_forward_{i}.png')
 
     for i in range(Roop):
-        cnt_prob = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z)
+        cnt_prob, cnt_prob2 = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"])
 
         plt.figure(figsize=(9, 6))
         plt.plot(cnt_prob, label='Currently Outside', color='b')
@@ -214,17 +261,24 @@ if __name__ == "__main__":
     logging.info(f"Us_backward.shape: {Us_backward.shape}")
 
     # backward processにおける管状近傍の外にある粒子の割合を評価
+    # prob_ls_stackedは、管状近傍の外にある確率の推移を表す
+    # prob_ls_stacked2は、データ多様体からの距離2の領域の外にある確率の推移を表す
     prob_ls_stacked = []
+    prob_ls_stacked2 = []
+
     Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
     Us_backward = np.array(Us_backward)
     Us_backward = Us_backward[:, ::-1, :, :]
 
     for i in range(Roop):
-        prob_ls = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z)
+        prob_ls, prob_ls2 = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"])
         prob_ls_stacked.append(prob_ls)
+        prob_ls_stacked2.append(prob_ls2)
 
     prob_means = np.mean(prob_ls_stacked, axis=0)
     prob_stds = np.std(prob_ls_stacked, axis=0)
+    prob_means2 = np.mean(prob_ls_stacked2, axis=0)
+    prob_stds2 = np.std(prob_ls_stacked2, axis=0)
 
     # prob_means が 0.95, 0.99, 0.999 以下になる最初のインデックスを探す
     index_10 = np.argmax(prob_means > 0.1)
@@ -239,6 +293,11 @@ if __name__ == "__main__":
     logging.info(f"index_95: {index_95}")
     logging.info(f"index_99: {index_99}")
     logging.info(f"index_999: {index_999}")
+
+    # prob_means2 が 0.95, 0.99, 0.999 以下になる最初のインデックスを探す
+    index_95_2 = np.argmax(prob_means2 > 0.95)
+    index_99_2 = np.argmax(prob_means2 > 0.99)
+    index_999_2 = np.argmax(prob_means2 > 0.999)
 
     # defaultのLate_timeに、index_95, index_99, index_999 に対応する時間を追加
     Late_time.extend([1000-index_10, 1000-index_50, 1000-index_90, 1000-index_95, 1000-index_99, 1000-index_999])
@@ -303,8 +362,16 @@ if __name__ == "__main__":
     ax2 = ax1.twinx()  # 2つ目の軸を生成
     color = 'tab:red'
     ax2.set_ylabel('Probability of the particles outside tubular neighbourhood', color=color)
+
+    # prob_means を塗りつぶしとともにプロット
     ax2.fill_between(range(len(prob_means)), prob_means - prob_stds, prob_means + prob_stds, color='gray', alpha=0.2)
     ax2.plot(prob_means, color=color)
+    
+    # prob_means2 を点線でプロット（少し目立たないように透明度と線種を設定）
+    if config.get("show_other_inj_line", False):
+        ax2.plot(prob_means2, color=color, linestyle='--', alpha=0.7, label='prob_means2')
+
+    # 軸の設定
     ax2.tick_params(axis='y', labelcolor=color)
     ax2.grid(True, which='both', axis='both', zorder=1)
 
@@ -312,6 +379,10 @@ if __name__ == "__main__":
     ax2.axvline(x=index_95, color='orange', linestyle='--', linewidth=2, label='0.95 Threshold')
     ax2.axvline(x=index_99, color='purple', linestyle='--', linewidth=2, label='0.99 Threshold')
     ax2.axvline(x=index_999, color='brown', linestyle='--', linewidth=2, label='0.999 Threshold')
+    ax2.axvline(x=index_95_2, color='orange', linestyle='--', linewidth=2, alpha=0.7)
+    ax2.axvline(x=index_99_2, color='purple', linestyle='--', linewidth=2, alpha=0.7)
+    ax2.axvline(x=index_999_2, color='brown', linestyle='--', linewidth=2, alpha=0.7)
+    
 
     # レジェンドの表示
     ax2.legend(loc='upper right')    

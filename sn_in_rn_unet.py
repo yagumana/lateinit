@@ -129,9 +129,10 @@ if __name__ == "__main__":
     batch_size = config['batch_size'] # testデータのbatch_size
     R = config['R']
     r = config['r']
+    denoise_model = config['denoise_model']
 
     # パスの設定と dataset_nameの取得
-    dataset_name, path_name, denoise_model = setup_paths(config)
+    dataset_name, path_name, img_dir = setup_paths(config)
 
     logging.info(f"Training mode is {'enabled' if is_train else 'disabled'}")
     logging.info(f"Dataset name: {dataset_name}")
@@ -164,7 +165,7 @@ if __name__ == "__main__":
     logging.info("Successfuly loaded Us_forward data!")
     logging.info(f"Us.shape: {Us.shape}")
     logging.info(f"dataset_name: {dataset_name}")
-    cnt_prob = utils.neighbourhood_cnt(Us, dataset_name, R=R, r=r, dim_z=dim_z) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
+    cnt_prob, cnt_prob2 = utils.neighbourhood_cnt(Us, dataset_name, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"]) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
 
     plt.figure(figsize=(9, 6))
     plt.plot(cnt_prob, label='Currently Outside', color='b')
@@ -214,19 +215,30 @@ if __name__ == "__main__":
     Us_backward = np.stack(Us_backward) # [Gauss noise, ..., S_1]
     logging.info(f"Us_backward.shape: {Us_backward.shape}") 
 
+    # prob_ls_stackedは、管状近傍の外にある確率の推移を表す
+    # prob_ls_stacked2は、データ多様体からの距離2の領域の外にある確率の推移を表す
     prob_ls_stacked = []
+    prob_ls_stacked2 = []
 
     for i in range(5):
-        prob_ls = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
+        prob_ls, prob_ls2 = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"]) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
 
         prob_ls_stacked.append(prob_ls)
+        prob_ls_stacked2.append(prob_ls2)
 
     means = np.mean(prob_ls_stacked, axis=0)
     stds = np.std(prob_ls_stacked, axis=0)
+    means2 = np.mean(prob_ls_stacked2, axis=0)
+    stds2 = np.std(prob_ls_stacked2, axis=0)
+
     logging.info(means)
+    logging.info(means2)
 
     plt.figure(figsize=(9, 6))
     plt.plot(means)
+    # config["show_other_inj_line"] が True の場合に means2 を描画
+    if config.get("show_other_inj_line", False):  # デフォルトでFalseを指定
+        plt.plot(means2, label="Means2", linestyle="--")  # Means2を描画
     plt.savefig(f'images/{path_name}/r{dim_d}_back.png')
 
     plt.figure(figsize=(9, 6))
