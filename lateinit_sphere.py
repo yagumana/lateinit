@@ -295,18 +295,27 @@ if __name__ == "__main__":
     logging.info(f"index_999: {index_999}")
 
     # prob_means2 が 0.95, 0.99, 0.999 以下になる最初のインデックスを探す
-    index_95_2 = np.argmax(prob_means2 > 0.95)
-    index_99_2 = np.argmax(prob_means2 > 0.99)
-    index_999_2 = np.argmax(prob_means2 > 0.999)
+    if config.get("show_other_inj_line", False):
+        index_95_2 = np.argmax(prob_means2 > 0.95)
+        index_99_2 = np.argmax(prob_means2 > 0.99)
+        index_999_2 = np.argmax(prob_means2 > 0.999)
+        logging.info(f"index_95_2: {index_95_2}")
+        logging.info(f"index_99_2: {index_99_2}")
+        logging.info(f"index_999_2: {index_999_2}")
 
-    # defaultのLate_timeに、index_95, index_99, index_999 に対応する時間を追加
-    Late_time.extend([1000-index_10, 1000-index_50, 1000-index_90, 1000-index_95, 1000-index_99, 1000-index_999])
+        # defaultのLate_timeに、index_95, index_99, index_999 に対応する時間を追加
+        Late_time.extend([1000-index_95_2, 1000-index_99_2, 1000-index_999_2, 1000-index_10, 1000-index_50, 1000-index_90, 1000-index_95, 1000-index_99, 1000-index_999])
+    
+    else:
+        # defaultのLate_timeに、index_95, index_99, index_999 に対応する時間を追加
+        Late_time.extend([1000-index_10, 1000-index_50, 1000-index_90, 1000-index_95, 1000-index_99, 1000-index_999])
 
 
     distance_ls = []
     for i in range(len(Late_time)):
         Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=Late_time[i], path_name=path_name, dim_z=dim_z, denoise_model=denoise_model)
         Us_backward = np.array(Us_backward)
+        logging.info(f"Us_backward.shape: {Us_backward.shape}")
         Us_backward = Us_backward[:, ::-1, :, :]
         ls = []
         for j in range(Roop):
@@ -320,8 +329,12 @@ if __name__ == "__main__":
         distance_ls.append(np.mean(ls))
     logging.info(distance_ls)
 
-    # distance_lsのうち、index_95, 99, 999に対応する最後の3つの値を消す
-    distance_ls = distance_ls[:-6]
+    if config.get("show_other_inj_line", False):
+        # distance_lsのうち、index_95, 99, 999に対応する最後の9つの値を消す
+        distance_ls = distance_ls[:-9]
+    else:
+        # distance_lsのうち、index_95, 99, 999に対応する最後の6つの値を消す
+        distance_ls = distance_ls[:-6]
 
     # dis_ls の最後の値の 1.2 倍を計算
     target_value = distance_ls[0] * 1.2
@@ -330,9 +343,6 @@ if __name__ == "__main__":
     # index に対応する Late_time_transformed の値を取得
     target_time = Late_time_transformed[index]
     logging.info(target_time)
-
-
-
     
 
     # グラフの描画
@@ -346,17 +356,6 @@ if __name__ == "__main__":
     ax1.tick_params(axis='y', labelcolor=color)
     ax1.set_yscale('log')  # y軸を対数スケールに設定
     ax1.grid(True, which='both', axis='both', zorder=1)
-
-    # target_time に対応する位置に青色の垂直線を引く
-    # ax1.axvline(x=target_time, color=color, linestyle='--', label=f'Target Time: {target_time}')
-
-    
-
-    # if dataset_name == "circle":
-    #     ax1.axvline(x=215, color='green', linestyle='--', linewidth=2)
-    # elif dataset_name == "sphere":
-    #     # 横軸177に縦線を引く
-    #     ax1.axvline(x=177, color='green', linestyle='--', linewidth=2)
 
     # 右側の軸に対して prob_ls をプロット
     ax2 = ax1.twinx()  # 2つ目の軸を生成
@@ -389,6 +388,54 @@ if __name__ == "__main__":
 
 
     plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit.png')
+
+
+    # グラフの描画
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    # 左側の軸に対して distance_ls をプロット
+    color = 'tab:blue' 
+    ax1.set_xlabel('Diffusion Time')
+    ax1.set_ylabel('Wasserstein Distance', color=color)
+    ax1.plot(Late_time_transformed, distance_ls, color=color)
+    ax1.tick_params(axis='y', labelcolor=color)
+    ax1.set_yscale('log')  # y軸を対数スケールに設定
+    ax1.grid(True, which='both', axis='both', zorder=1)
+
+    # 右側の軸に対して prob_ls をプロット
+    ax2 = ax1.twinx()  # 2つ目の軸を生成
+    color = 'tab:red'
+    ax2.set_ylabel('Probability of the particles inside tubular neighbourhood', color=color)
+
+    adjusted_prob_means = 1 - prob_means
+    # prob_means を塗りつぶしとともにプロット
+    ax2.fill_between(range(len(adjusted_prob_means)), adjusted_prob_means- prob_stds, adjusted_prob_means + prob_stds, color='gray', alpha=0.2)
+    ax2.plot(prob_means, color=color)
+    
+    # prob_means2 を点線でプロット（少し目立たないように透明度と線種を設定）
+    if config.get("show_other_inj_line", False):
+        adjusted_prob_means2 = 1 - prob_means2
+        ax2.plot(adjusted_prob_means2, color=color, linestyle='--', alpha=0.7, label='prob_means2')
+
+    # 軸の設定
+    ax2.tick_params(axis='y', labelcolor=color)
+    ax2.grid(True, which='both', axis='both', zorder=1)
+
+    # 追加: prob_means が 0.95, 0.99, 0.999 以下になるインデックスに垂直線を描画
+    ax2.axvline(x=index_95, color='orange', linestyle='--', linewidth=2, label='0.05 Threshold')
+    ax2.axvline(x=index_99, color='purple', linestyle='--', linewidth=2, label='0.01 Threshold')
+    ax2.axvline(x=index_999, color='brown', linestyle='--', linewidth=2, label='0.001 Threshold')
+    ax2.axvline(x=index_95_2, color='orange', linestyle='--', linewidth=2, alpha=0.7)
+    ax2.axvline(x=index_99_2, color='purple', linestyle='--', linewidth=2, alpha=0.7)
+    ax2.axvline(x=index_999_2, color='brown', linestyle='--', linewidth=2, alpha=0.7)
+    
+
+    # レジェンドの表示
+    ax2.legend(loc='upper right')    
+
+
+    plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit2.png')
+
 
 
 

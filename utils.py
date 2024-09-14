@@ -334,6 +334,40 @@ def is_neighbour_ellipse(x, a=1, b=1):
     else:
         return False
 
+def is_neighbour_ellipse2(x, a=1, b=1):
+    """
+    管状近傍の代わりに、曲率が最も大きい点に対応する距離により定まる領域を近傍とする
+    """
+    dim = len(x)
+
+    if a >= b:
+        injective_R = a*a/b
+    elif a <= b:
+        logging.info("a < b is not implemented yet!")
+        sys.exit()
+        # injective_R = a*a/b
+    
+    result, px, py, dist = distEllipsePoint(a, b, x[0], x[1])
+    # distの値をクリップする
+    dist = max(dist, 1e-5)
+    dist = min(dist, 1e5)
+
+    # 管状近傍の内か外かの判定
+    total_dis = 0
+    # 3次元目からn次元目までの距離の2乗を足す
+    for i in range(3, dim):
+        total_dis += x[i]**2
+    # 2次元平面内での距離の2乗を足す
+    total_dis += dist**2 
+    # 2乗して計算しているので、平方根をとる
+    total_dis = np.sqrt(total_dis)
+
+    if total_dis < injective_R:
+        logging.info(f"total_dis: {total_dis}, injective_R: {injective_R}")
+        return True
+    else:
+        return False
+
 def is_neighbour_hypersphere(x, dim_z=21):
     dim = len(x)
     injective_R = 1
@@ -390,6 +424,10 @@ def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21, cnt2_flag=False):
             elif dataset_name == "ellipse":
                 if not is_neighbour_ellipse(Us[t][i], a=R, b=r):
                     cnt += 1
+                if cnt2_flag:
+                    if not is_neighbour_ellipse2(Us[t][i], a=R, b=r):
+                        cnt2 += 1
+
             elif dataset_name == "embed_sphere":
                 if not is_neighbour_hypersphere(Us[t][i], dim_z):
                     cnt += 1
@@ -400,7 +438,7 @@ def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21, cnt2_flag=False):
             else:
                 logging.info("Not implemented! check the dataset_name again!")     
                 sys.exit()       
-        
+        # logging.info(f"t={t}, cnt={cnt2}")
         cnt_prob.append(cnt/Data_size)
         cnt_prob2.append(cnt2/Data_size)
 
