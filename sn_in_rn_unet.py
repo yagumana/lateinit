@@ -87,7 +87,7 @@ def setup_paths(config):
 
     if dataset_name == "embed_sphere":
         path_name = config['embed_data']
-    elif dataset_name in ["torus", "ellipse"]:
+    elif dataset_name in ["torus", "ellipse", "circle_two_injectivity"]:
         path_name = dataset_name + str(config['R']) + str(config['r'])
 
     img_dir = os.path.join(base_path, "images", path_name)
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     elif dataset_name == "circle_half":
         data = dataset.circle_half_dataset(n=Data_size, r=dim_d).numpy()
     elif dataset_name == "circle_two_injectivity":
-        data = dataset.circle_half_dataset2(n=Data_size, r=dim_d).numpy()
+        data = dataset.circle_half_dataset2(n=Data_size, dim=dim_d, R=R, r=r).numpy()
     elif dataset_name == "sphere":
         data = dataset.sphere_dataset(n=Data_size, r=dim_d).numpy()
     elif dataset_name == "sphere_notuniform":

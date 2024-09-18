@@ -53,21 +53,22 @@ def circle_half_dataset(n=8000, r=4, noise_level=0.01):
 
     return torch.from_numpy(embedding.astype(np.float32))
 
-def circle_half_dataset2(n=8000, r=4, noise_level=0.01):
+def circle_half_dataset2(n=8000, dim=4, R=2, r=1, noise_level=0.01):
     """
     単射半径の異なる2つの円周の一部を組み合わせた多様体
+    Rは大きい方の半径、rは小さい方の半径
     """
-    embedding = np.zeros((n, r))
+    embedding = np.zeros((n, dim))
     rng = np.random.default_rng(42)
     p = rng.uniform(np.pi/6, np.pi/3, n//2)
-    x = np.cos(p)
-    y = np.sin(p)
+    x = r*np.cos(p)
+    y = r*np.sin(p)
     embedding[:n//2, 0] = x
     embedding[:n//2, 1] = y
 
     p = rng.uniform(7*np.pi/6, 4*np.pi/3, n//2)
-    x = 2*np.cos(p)
-    y = 2*np.sin(p)
+    x = R*np.cos(p)
+    y = R*np.sin(p)
     embedding[n//2:, 0] = x
     embedding[n//2:, 1] = y
 

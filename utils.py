@@ -30,7 +30,7 @@ def is_neighbour_2d(x):
     else:
         return False
 
-def is_neighbour_2d_inj1(x):
+def is_neighbour_2d_inj1(x, R=2, r=1):
     """
     r=1, theta \in [pi/6, pi/3]の円の一部と、
     r=2, theta \in [7*pi/6, 4*pi/3]の円の一部
@@ -52,16 +52,16 @@ def is_neighbour_2d_inj1(x):
         """
         正確ではない（r=1の部分も加味すべき）が、管状近傍判定には影響しない (どうせ1以上になる)
         """
-        d = np.min(np.abs(np.sqrt(x[0]**2 + x[1]**2) - 2))
+        d = np.min(np.abs(np.sqrt(x[0]**2 + x[1]**2) - R))
 
     elif np.pi/3 < angle < 7*np.pi/6:
-        d1 = np.sqrt((x[0]-1/2)**2 + (x[1]-np.sqrt(3)/2)**2)
-        d2 = np.sqrt((x[0]+np.sqrt(3))**2 + (x[1]+1)**2)
+        d1 = np.sqrt((x[0]-r*np.cos(np.pi/3))**2 + (x[1]-r*np.sin(np.pi/3))**2)
+        d2 = np.sqrt((x[0]-R*np.cos(np.pi*7/6))**2 + (x[1]-R*np.sin(np.pi*7/6))**2)
         d = min(d1, d2)
     
     else :
-        d1 = np.sqrt((x[0]-np.sqrt(3)/2)**2 + (x[1]-1/2)**2)
-        d2 = np.sqrt((x[0]+1)**2 + (x[1]+np.sqrt(3))**2)
+        d1 = np.sqrt((x[0]-r*np.cos(np.pi/6))**2 + (x[1]-r*np.sin(np.pi/6))**2)
+        d2 = np.sqrt((x[0]-R*np.cos(np.pi*4/3))**2 + (x[1]-R*np.sin(np.pi*4/3))**2)
         d = min(d1, d2)
     
     for i in range(2, dim):
@@ -69,12 +69,12 @@ def is_neighbour_2d_inj1(x):
     
     dis = np.sqrt(dis + d**2)
 
-    if dis < 1:
+    if dis < r:
         return True
     else:
         return False
 
-def is_neighbour_2d_inj2(x):
+def is_neighbour_2d_inj2(x, R=2, r=1):
     """
     r=1, theta \in [pi/6, pi/3]の円の一部と、
     r=2, theta \in [7*pi/6, 4*pi/3]の円の一部
@@ -96,16 +96,16 @@ def is_neighbour_2d_inj2(x):
         """
         正確ではない（r=1の部分も加味すべき）が、管状近傍判定には影響しない (どうせ1以上になる)
         """
-        d = np.min(np.abs(np.sqrt(x[0]**2 + x[1]**2) - 2))
+        d = np.min(np.abs(np.sqrt(x[0]**2 + x[1]**2) - R))
 
     elif np.pi/3 < angle < 7*np.pi/6:
-        d1 = np.sqrt((x[0]-1/2)**2 + (x[1]-np.sqrt(3)/2)**2)
-        d2 = np.sqrt((x[0]+np.sqrt(3))**2 + (x[1]+1)**2)
+        d1 = np.sqrt((x[0]-r*np.cos(np.pi/3))**2 + (x[1]-r*np.sin(np.pi/3))**2)
+        d2 = np.sqrt((x[0]-R*np.cos(np.pi*7/6))**2 + (x[1]-R*np.sin(np.pi*7/6))**2)
         d = min(d1, d2)
     
     else :
-        d1 = np.sqrt((x[0]-np.sqrt(3)/2)**2 + (x[1]-1/2)**2)
-        d2 = np.sqrt((x[0]+1)**2 + (x[1]+np.sqrt(3))**2)
+        d1 = np.sqrt((x[0]-r*np.cos(np.pi/6))**2 + (x[1]-r*np.sin(np.pi/6))**2)
+        d2 = np.sqrt((x[0]-R*np.cos(np.pi*4/3))**2 + (x[1]-R*np.sin(np.pi*4/3))**2)
         d = min(d1, d2)
     
     for i in range(2, dim):
@@ -113,7 +113,7 @@ def is_neighbour_2d_inj2(x):
     
     dis = np.sqrt(dis + d**2)
 
-    if dis < 2:
+    if dis < R:
         return True
     else:
         return False
@@ -409,10 +409,10 @@ def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21, cnt2_flag=False):
                 if not is_neighbour_2d(Us[t][i]):
                     cnt += 1
             elif dataset_name == "circle_two_injectivity":
-                if not is_neighbour_2d_inj1(Us[t][i]):
+                if not is_neighbour_2d_inj1(Us[t][i], R=R, r=r):
                     cnt += 1
                 if cnt2_flag:
-                    if not is_neighbour_2d_inj2(Us[t][i]):
+                    if not is_neighbour_2d_inj2(Us[t][i], R=R, r=r):
                         cnt2 += 1
 
             elif dataset_name == "sphere" or dataset_name == "sphere_notuniform":

@@ -156,33 +156,6 @@ if __name__ == "__main__":
 
     # ログのコンフィグの確認
     logging.info(f"Config loaded: {config}")
-
-    # if args.time_step is not None:
-    #     config['time_step'] = args.time_step
-    # if args.Late_time is not None:
-    #     config['Late_time'] = args.Late_time
-    # if args.data_size is not None:
-    #     config['data_size'] = args.data_size
-    # if args.dim_d is not None:
-    #     config['dim_d'] = args.dim_d
-    # if args.dim_z is not None:
-    #     config['dim_z'] = args.dim_z
-    # if args.dataset_name is not None:
-    #     config['dataset_name'] = args.dataset_name
-    # if args.dataset_path is not None:
-    #     config['dataset_path'] = args.dataset_path
-    # if args.batch_size is not None:
-    #     config['batch_size'] = args.batch_size
-    # if args.Roop is not None:
-    #     config['Roop'] = args.Roop
-    # if args.Load_exp:
-    #     config['Load_exp'] = True
-    # if args.R is not None:
-    #     config['R'] = args.R
-    # if args.r is not None:
-    #     config['r'] = args.r
-    # if args.denoise_model is not None:
-    #     config['denoise_model'] = args.denoise_model
     
     wandb.init(config=config, project="late initialization")
 
@@ -294,11 +267,19 @@ if __name__ == "__main__":
     logging.info(f"index_99: {index_99}")
     logging.info(f"index_999: {index_999}")
 
+    reversed_index_95 = len(prob_means) - index_95 - 1
+    reversed_index_99 = len(prob_means) - index_99 - 1
+    reversed_index_999 = len(prob_means) - index_999 - 1
+
     # prob_means2 が 0.95, 0.99, 0.999 以下になる最初のインデックスを探す
     if config.get("show_other_inj_line", False):
         index_95_2 = np.argmax(prob_means2 > 0.95)
         index_99_2 = np.argmax(prob_means2 > 0.99)
         index_999_2 = np.argmax(prob_means2 > 0.999)
+        reversed_index_95_2 = len(prob_means2) - index_95_2 - 1
+        reversed_index_99_2 = len(prob_means2) - index_99_2 - 1
+        reversed_index_999_2 = len(prob_means2) - index_999_2 - 1
+
         logging.info(f"index_95_2: {index_95_2}")
         logging.info(f"index_99_2: {index_99_2}")
         logging.info(f"index_999_2: {index_999_2}")
@@ -332,9 +313,12 @@ if __name__ == "__main__":
     if config.get("show_other_inj_line", False):
         # distance_lsのうち、index_95, 99, 999に対応する最後の9つの値を消す
         distance_ls = distance_ls[:-9]
+        Late_time = Late_time[:-9]
     else:
         # distance_lsのうち、index_95, 99, 999に対応する最後の6つの値を消す
         distance_ls = distance_ls[:-6]
+        Late_time = Late_time[:-6]
+    
 
     # dis_ls の最後の値の 1.2 倍を計算
     target_value = distance_ls[0] * 1.2
@@ -343,10 +327,13 @@ if __name__ == "__main__":
     # index に対応する Late_time_transformed の値を取得
     target_time = Late_time_transformed[index]
     logging.info(target_time)
+    logging.info(Late_time)
     
 
     # グラフの描画
     fig, ax1 = plt.subplots(figsize=(10, 6))
+    Late_time_transformed = [Time_step - t for t in Late_time]
+    logging.info(Late_time_transformed)
 
     # 左側の軸に対して distance_ls をプロット
     color = 'tab:blue' 
@@ -356,6 +343,8 @@ if __name__ == "__main__":
     ax1.tick_params(axis='y', labelcolor=color)
     ax1.set_yscale('log')  # y軸を対数スケールに設定
     ax1.grid(True, which='both', axis='both', zorder=1)
+    ax1.set_xlim([1000, 0])
+    # ax1.invert_xaxis()
 
     # 右側の軸に対して prob_ls をプロット
     ax2 = ax1.twinx()  # 2つ目の軸を生成
@@ -366,10 +355,6 @@ if __name__ == "__main__":
     ax2.fill_between(range(len(prob_means)), prob_means - prob_stds, prob_means + prob_stds, color='gray', alpha=0.2)
     ax2.plot(prob_means, color=color)
     
-    # prob_means2 を点線でプロット（少し目立たないように透明度と線種を設定）
-    if config.get("show_other_inj_line", False):
-        ax2.plot(prob_means2, color=color, linestyle='--', alpha=0.7, label='prob_means2')
-
     # 軸の設定
     ax2.tick_params(axis='y', labelcolor=color)
     ax2.grid(True, which='both', axis='both', zorder=1)
@@ -378,18 +363,29 @@ if __name__ == "__main__":
     ax2.axvline(x=index_95, color='orange', linestyle='--', linewidth=2, label='0.95 Threshold')
     ax2.axvline(x=index_99, color='purple', linestyle='--', linewidth=2, label='0.99 Threshold')
     ax2.axvline(x=index_999, color='brown', linestyle='--', linewidth=2, label='0.999 Threshold')
-    ax2.axvline(x=index_95_2, color='orange', linestyle='--', linewidth=2, alpha=0.7)
-    ax2.axvline(x=index_99_2, color='purple', linestyle='--', linewidth=2, alpha=0.7)
-    ax2.axvline(x=index_999_2, color='brown', linestyle='--', linewidth=2, alpha=0.7)
-    
 
     # レジェンドの表示
-    ax2.legend(loc='upper right')    
-
+    ax2.legend(loc='upper left')
 
     plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit.png')
 
 
+    # prob_means2 を点線でプロット（少し目立たないように透明度と線種を設定）
+    if config.get("show_other_inj_line", False):
+        ax2.plot(prob_means2, color=color, linestyle='--', alpha=0.7, label='prob_means2')
+
+    if config.get("show_other_inj_line", False):
+        ax2.axvline(x=index_95_2, color='orange', linestyle='--', linewidth=2, alpha=0.7)
+        ax2.axvline(x=index_99_2, color='purple', linestyle='--', linewidth=2, alpha=0.7)
+        ax2.axvline(x=index_999_2, color='brown', linestyle='--', linewidth=2, alpha=0.7)
+    
+        plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit_add.png')
+
+
+    # Late_time_transformed = [Time_step - t for t in Late_time]
+
+    # グラフを描画する前にリセット
+    plt.close(fig)  # または plt.clf() を使ってもOK
     # グラフの描画
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
@@ -401,21 +397,14 @@ if __name__ == "__main__":
     ax1.tick_params(axis='y', labelcolor=color)
     ax1.set_yscale('log')  # y軸を対数スケールに設定
     ax1.grid(True, which='both', axis='both', zorder=1)
+    ax1.set_xlim([1000, 0])
+    # ax1.invert_xaxis()
+
 
     # 右側の軸に対して prob_ls をプロット
     ax2 = ax1.twinx()  # 2つ目の軸を生成
     color = 'tab:red'
     ax2.set_ylabel('Probability of the particles inside tubular neighbourhood', color=color)
-
-    adjusted_prob_means = 1 - prob_means
-    # prob_means を塗りつぶしとともにプロット
-    ax2.fill_between(range(len(adjusted_prob_means)), adjusted_prob_means- prob_stds, adjusted_prob_means + prob_stds, color='gray', alpha=0.2)
-    ax2.plot(prob_means, color=color)
-    
-    # prob_means2 を点線でプロット（少し目立たないように透明度と線種を設定）
-    if config.get("show_other_inj_line", False):
-        adjusted_prob_means2 = 1 - prob_means2
-        ax2.plot(adjusted_prob_means2, color=color, linestyle='--', alpha=0.7, label='prob_means2')
 
     # 軸の設定
     ax2.tick_params(axis='y', labelcolor=color)
@@ -425,16 +414,27 @@ if __name__ == "__main__":
     ax2.axvline(x=index_95, color='orange', linestyle='--', linewidth=2, label='0.05 Threshold')
     ax2.axvline(x=index_99, color='purple', linestyle='--', linewidth=2, label='0.01 Threshold')
     ax2.axvline(x=index_999, color='brown', linestyle='--', linewidth=2, label='0.001 Threshold')
-    ax2.axvline(x=index_95_2, color='orange', linestyle='--', linewidth=2, alpha=0.7)
-    ax2.axvline(x=index_99_2, color='purple', linestyle='--', linewidth=2, alpha=0.7)
-    ax2.axvline(x=index_999_2, color='brown', linestyle='--', linewidth=2, alpha=0.7)
     
-
+    adjusted_prob_means = 1 - prob_means
+    # prob_means を塗りつぶしとともにプロット
+    ax2.fill_between(range(len(adjusted_prob_means)), adjusted_prob_means - prob_stds, adjusted_prob_means + prob_stds, color='gray', alpha=0.2)
+    ax2.plot(adjusted_prob_means, color=color)
+    
     # レジェンドの表示
-    ax2.legend(loc='upper right')    
-
-
+    ax2.legend(loc='upper left')
     plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit2.png')
+
+
+    # prob_means2 を点線でプロット（少し目立たないように透明度と線種を設定）
+    if config.get("show_other_inj_line", False):
+        adjusted_prob_means2 = 1 - prob_means2
+        ax2.plot(adjusted_prob_means2, color=color, linestyle='--', alpha=0.7, label='prob_means2')
+
+    if config.get("show_other_inj_line", False):
+        ax2.axvline(x=index_95_2, color='orange', linestyle='--', linewidth=2, alpha=0.7)
+        ax2.axvline(x=index_99_2, color='purple', linestyle='--', linewidth=2, alpha=0.7)
+        ax2.axvline(x=index_999_2, color='brown', linestyle='--', linewidth=2, alpha=0.7)
+        plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit2_add.png')
 
 
 
@@ -445,20 +445,20 @@ if __name__ == "__main__":
     # plt.ylim(-3, 3)
     plt.savefig(f"images/{path_name}/r{dim_d}_back_last_test0.png")
 
-    plt.figure(figsize=(8, 6))
-    plt.scatter(Us_backward[1, 0, :, 0], Us_backward[1, 0, :, 1])
-    # plt.xlim(-3, 3)
-    # plt.ylim(-3, 3)
-    plt.savefig(f"images/{path_name}/r{dim_d}_back_last_test1.png")
+    # plt.figure(figsize=(8, 6))
+    # plt.scatter(Us_backward[1, 0, :, 0], Us_backward[1, 0, :, 1])
+    # # plt.xlim(-3, 3)
+    # # plt.ylim(-3, 3)
+    # plt.savefig(f"images/{path_name}/r{dim_d}_back_last_test1.png")
 
-    plt.figure(figsize=(8, 6))
-    plt.scatter(Us_backward[2, 0, :, 0], Us_backward[2, 0, :, 1])
-    # plt.xlim(-3, 3)
-    # plt.ylim(-3, 3)
-    plt.savefig(f"images/{path_name}/r{dim_d}_back_last_test2.png")
+    # plt.figure(figsize=(8, 6))
+    # plt.scatter(Us_backward[2, 0, :, 0], Us_backward[2, 0, :, 1])
+    # # plt.xlim(-3, 3)
+    # # plt.ylim(-3, 3)
+    # plt.savefig(f"images/{path_name}/r{dim_d}_back_last_test2.png")
 
-    plt.figure(figsize=(8, 6))
-    plt.scatter(Us_backward[3, 0, :, 5], Us_backward[3, 0, :, 6])
-    # plt.xlim(-3, 3)
-    # plt.ylim(-3, 3)
-    plt.savefig(f"images/{path_name}/r{dim_d}_back_last_test3.png")
+    # plt.figure(figsize=(8, 6))
+    # plt.scatter(Us_backward[3, 0, :, 5], Us_backward[3, 0, :, 6])
+    # # plt.xlim(-3, 3)
+    # # plt.ylim(-3, 3)
+    # plt.savefig(f"images/{path_name}/r{dim_d}_back_last_test3.png")
