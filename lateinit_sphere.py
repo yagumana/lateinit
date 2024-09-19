@@ -182,7 +182,7 @@ if __name__ == "__main__":
 
 
     path_name = dataset_name
-    if dataset_name == "torus" or dataset_name == "ellipse":
+    if dataset_name == "torus" or dataset_name == "ellipse" or dataset_name == "circle_two_injectivity":
         base_path = os.getcwd()
         path_name = dataset_name + str(R) + str(r)
     if dataset_name == "embed_sphere":
@@ -285,11 +285,11 @@ if __name__ == "__main__":
         logging.info(f"index_999_2: {index_999_2}")
 
         # defaultのLate_timeに、index_95, index_99, index_999 に対応する時間を追加
-        Late_time.extend([1000-index_95_2, 1000-index_99_2, 1000-index_999_2, 1000-index_10, 1000-index_50, 1000-index_90, 1000-index_95, 1000-index_99, 1000-index_999])
+        Late_time.extend([1000-index_95_2-1, 1000-index_99_2-1, 1000-index_999_2-1, 1000-index_10-1, 1000-index_50-1, 1000-index_90-1, 1000-index_95-1, 1000-index_99-1, 1000-index_999-1])
     
     else:
         # defaultのLate_timeに、index_95, index_99, index_999 に対応する時間を追加
-        Late_time.extend([1000-index_10, 1000-index_50, 1000-index_90, 1000-index_95, 1000-index_99, 1000-index_999])
+        Late_time.extend([1000-index_10-1, 1000-index_50-1, 1000-index_90-1, 1000-index_95-1, 1000-index_99-1, 1000-index_999-1])
 
 
     distance_ls = []
@@ -435,8 +435,6 @@ if __name__ == "__main__":
         ax2.axvline(x=index_99_2, color='purple', linestyle='--', linewidth=2, alpha=0.7)
         ax2.axvline(x=index_999_2, color='brown', linestyle='--', linewidth=2, alpha=0.7)
         plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit2_add.png')
-
-
 
 
     plt.figure(figsize=(6, 6))

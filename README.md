@@ -5,6 +5,42 @@
 この時、各時刻ごとの管状近傍の割合を求めることができる. [第１ステップ]  
 late initializationを行い、各時刻ごとの管状近傍の割合と、wasserstein距離による再構成誤差の2つを比較する. [第2ステップ]
 
+## Requirements
+
+### Dependencies
+
+
+Our project uses Docker for environment setup. To install the necessary dependencies and start the environment, please follow the instructions below.
+
+1. **Build the Docker Image:**
+   ```bash
+   docker build -t project_name:latest .
+   ```
+
+2. **Run the Docker container:**
+    ```bash
+    docker container run -v $(pwd):/workspace --gpus "device=0" -it --name <your_container_name> <your_image_name>
+    ```
+
+If you prefer using pip for local development, you can still install the requirements manually:
+    
+    pip install -r requirements.txt
+
+### Training
+To train the diffusion model, run this command:
+```
+python sn_in_rn_unet.py --config ./configs/s1.yaml
+```
+
+### Analyzing 
+To analyze relationship between the proportion of the tubular neighbourhood and wasserstein distance, run this command:
+```
+python lateinit_sphere.py --config ./configs/s1_lateinit.yaml
+```
+
+
+<!-- 
+
 ```
 # ddpmを訓練し、管状近傍の割合を求める
 python sn_in_rn.py --config /path/to/config
@@ -15,4 +51,4 @@ python lateinit_sphere.py --config /path/to/config
 ```
 
 - denoising-diffusion-pytorchフォルダに入って、pip でインストール
-$ pip install denoising_diffusion_pytorch
+$ pip install denoising_diffusion_pytorch -->
