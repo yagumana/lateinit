@@ -92,6 +92,8 @@ def update_config_with_args(config, args):
     return config
 
 def get_forward_Us(dim_d, dim_z=20, roop=5, dataset_name = "circle", num_timesteps=1000, batch_size=1000):
+    if dataset_name == "s_0":
+        train_data = dataset.s_0_dataset(8000, dim_d)
     if dataset_name == "circle":
         train_data = dataset.circle_dataset(8000, dim_d)
     elif dataset_name == "circle_half":
@@ -298,6 +300,9 @@ if __name__ == "__main__":
         Us_backward = np.array(Us_backward)
         logging.info(f"Us_backward.shape: {Us_backward.shape}")
         Us_backward = Us_backward[:, ::-1, :, :]
+        # Late_time[i]は、Late_time[i]ステップだけ、初期化時刻を遅らせるという意味, 2つ目のindex0は、最終ステップのデータのみを取得するため
+        if path_name in ["mnist", "fashion_mnist"]:
+            np.save(f"Us_data/backward_{path_name}_in_{dim_d}_{Late_time[i]}.npy", Us_backward[0,0,:,:])
         ls = []
         for j in range(Roop):
             cost_matrix = ot.dist(Us_forward[j, 0], Us_backward[j, 0])

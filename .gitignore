@@ -6,3 +6,4 @@ score_data
 wandb
 *.pyc
 *.log
+*.pt

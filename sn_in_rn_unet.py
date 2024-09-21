@@ -139,7 +139,9 @@ if __name__ == "__main__":
 
     # 訓練dataの生成　shape: (n, r)
     # dim_d次元のユークリッド空間に埋め込まれた2次元の単位円を生成
-    if dataset_name == "circle":
+    if dataset_name == "s_0":
+        data = dataset.s_0_dataset(n=Data_size, r=dim_d).numpy()
+    elif dataset_name == "circle":
         data = dataset.circle_dataset(n=Data_size, r=dim_d).numpy()
     elif dataset_name == "circle_half":
         data = dataset.circle_half_dataset(n=Data_size, r=dim_d).numpy()

@@ -18,6 +18,25 @@ from datetime import datetime
 #         return False
 #     return dis
 
+    
+def is_neighbour_1d(x):
+    dim = len(x)
+    normal = 0 # 1次元の空間からの距離
+    for i in range(1, dim):
+        normal += x[i]**2
+
+    # 0次元球面までの距離
+    dis_1 = 0
+    for i in range(1):
+        dis_1 += x[i]**2
+    dis_1 = abs(dis_1-1)
+    
+    dis = np.sqrt(dis_1 + normal)
+    if dis < 1:
+        return True
+    else:
+        return False
+
 def is_neighbour_2d(x):
     dim = len(x)
     dis = 0
@@ -402,7 +421,10 @@ def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21, cnt2_flag=False):
         cnt = 0
         cnt2 = 0
         for i in range(Data_size):
-            if dataset_name == "circle":
+            if dataset_name == "s_0":
+                if not is_neighbour_1d(Us[t][i]):
+                    cnt += 1
+            elif dataset_name == "circle":
                 if not is_neighbour_2d(Us[t][i]):
                     cnt += 1
             elif dataset_name == "circle_half":

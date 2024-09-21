@@ -3,6 +3,22 @@ import torch
 import sys
 import os
 
+def s_0_dataset(n=8000, r=4, noise_level=0.01):
+    """
+    r次元のユークリッド空間に埋め込まれたS^0
+    軽いノイズを追加して生成
+    S^0 = {-1, 1}
+    """
+    embedding = np.zeros((n, r))
+    embedding[:, 0] = np.random.choice([-1, 1], n)
+
+    # 軽いノイズを追加
+    noise = np.random.normal(0, noise_level, (n, r))
+    embedding += noise
+
+    return torch.from_numpy(embedding.astype(np.float32))
+    
+
 def circle_dataset(n=8000, r=4, noise_level=0.01):
     """
     r次元のユークリッド空間に埋め込まれた円周
