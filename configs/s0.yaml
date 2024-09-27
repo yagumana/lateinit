@@ -2,7 +2,7 @@
 
 time_step: 1000
 data_size: 50000
-dim_d: 8 # ambient space dimension of the hypersphere
+dim_d: 16 # ambient space dimension of the hypersphere
 dim_z: 10 # latent space dimension of the hypersphere
 is_train: True
 batch_size: 1000

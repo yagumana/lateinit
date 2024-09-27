@@ -200,7 +200,7 @@ class NoiseScheduler():
         # print(x_start.shape) # (32, 3)
         # print(x_noise.shape) # (32, 3)
         """
-        s1はtが大きくなるにつれ小さくなる⇒のイズが大きくなる
+        s1はtが大きくなるにつれ小さくなる⇒ノイズが大きくなる
         s1, s2のshape: (batch_size,1),
         x_start, x_noiseのshape: (batch_size, data_dim)
         """
@@ -227,7 +227,7 @@ def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100,
 
             noise = torch.randn(batch.shape).to(device)
             timesteps = torch.randint(0, noise_scheduler.num_timesteps, (batch.shape[0],)).long().to(device)
-            noisy = noise_scheduler.add_noise(batch, noise, timesteps)
+            noisy = noise_scheduler.add_noise(x_start=batch, x_noise=noise, timesteps=timesteps)
 
             # print(f"debug: {noisy.shape}, {timesteps.shape}")
             noisy = noisy.unsqueeze(1).to(device)
@@ -261,12 +261,16 @@ def train(nn_model, dataloader, noise_scheduler, optimizer, device, N_epoch=100,
 
     return losses
     
-def get_denoise_data(nn_model, noise_scheduler, device, N=1000, batch_size=1000, dim = 7, late=0):
+def get_denoise_data(nn_model, noise_scheduler, device, N=1000, batch_size=1000, dim = 7, late=0, init_small=False):
     """
     訓練済みのdiffusionモデル(nn_model)を用いて、dataがgauss noiseからN stepかけてdataが生成される過程を、data_listに保存して返す.
     """
     nn_model.eval()
-    sample = torch.randn(batch_size, 1, dim).to(device)
+    if init_small:
+        sample = torch.randn(batch_size, 1, dim).to(device) / np.sqrt(dim)
+    else:
+        sample = torch.randn(batch_size, 1, dim).to(device)
+
     # timesteps = list(range(len(noise_scheduler)))[::-1]
     timesteps = list(range(len(noise_scheduler)-late))[::-1]
     data_list = np.zeros((len(timesteps), batch_size, dim))
@@ -279,7 +283,7 @@ def get_denoise_data(nn_model, noise_scheduler, device, N=1000, batch_size=1000,
         data_list[i] = sample.squeeze(1).cpu().numpy()
     return data_list
 
-def load_experiments(device=None, roop=5, batch_size=1000, Time_step = 1000, dim_d=7, dim_z=7, late=0, path_name="sphere", denoise_model="MLP"):
+def load_experiments(device=None, roop=5, batch_size=1000, Time_step = 1000, dim_d=7, dim_z=7, late=0, path_name="sphere", denoise_model="MLP", init_small=False):
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -297,10 +301,11 @@ def load_experiments(device=None, roop=5, batch_size=1000, Time_step = 1000, dim
         logging.info(f"loading pretrained weight_{i}...")
         nn_model.load_state_dict(torch.load(f'/workspace/weights/{path_name}_in_r{dim_d}_s{dim_z}_{i}.pth', map_location=device))
         
-        if late==0:
-            data_list = get_denoise_data(nn_model, noise_scheduler, batch_size=batch_size, dim=dim_d, device=device, late=late)
-        else:
-            data_list = get_denoise_data(nn_model, noise_scheduler, batch_size=batch_size, dim=dim_d, device=device, late=late)
+        # if late==0:
+        #     data_list = get_denoise_data(nn_model, noise_scheduler, batch_size=batch_size, dim=dim_d, device=device, late=late)
+        # else:
+        data_list = get_denoise_data(nn_model, noise_scheduler, batch_size=batch_size, dim=dim_d, device=device, late=late, init_small=init_small)
+
         data_list_stacked.append(data_list)
 
     return data_list_stacked

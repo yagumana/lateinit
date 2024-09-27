@@ -27,6 +27,8 @@ import wandb
 import dataset
 import model
 import utils
+from src.s0_energy import U
+
 
 """
 すでに訓練済みのddpmの重みが存在することを前提にする. (s1_in_r3.pyファイルを参照)
@@ -56,6 +58,7 @@ def parser_args():
     parser.add_argument('--R', type=float)
     parser.add_argument('--r', type=float)
     parser.add_argument('--denoise_model', type=str, help='Denoise model type')
+    parser.add_argument('--init_small', type=bool, default=None)
 
 
     args = parser.parse_args()
@@ -88,6 +91,8 @@ def update_config_with_args(config, args):
         config['r'] = args.r
     if args.denoise_model is not None:
         config['denoise_model'] = args.denoise_model
+    if args.init_small is not None:
+        config['init_small'] = args.init_small
 
     return config
 
@@ -203,7 +208,7 @@ if __name__ == "__main__":
     # backwardのデータを取得
     if Load_exp == True:
         logging.info("loading Us backward data...")
-        Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
+        Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model, init_small=config['init_small'])
         Us_backward = np.array(Us_backward)
         Us_backward = Us_backward[:, ::-1, :, :] # Us_backwardを逆順にして、Us_forwradに合わせる
 
@@ -241,7 +246,7 @@ if __name__ == "__main__":
     prob_ls_stacked = []
     prob_ls_stacked2 = []
 
-    Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model)
+    Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, dim_z=dim_z, device=device, late=0, path_name=path_name, denoise_model=denoise_model, init_small=config['init_small'])
     Us_backward = np.array(Us_backward)
     Us_backward = Us_backward[:, ::-1, :, :]
 
@@ -296,7 +301,7 @@ if __name__ == "__main__":
 
     distance_ls = []
     for i in range(len(Late_time)):
-        Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=Late_time[i], path_name=path_name, dim_z=dim_z, denoise_model=denoise_model)
+        Us_backward = model.load_experiments(roop=Roop, batch_size=batch_size, Time_step=Time_step, dim_d=dim_d, device=device, late=Late_time[i], path_name=path_name, dim_z=dim_z, denoise_model=denoise_model, init_small=config['init_small'])
         Us_backward = np.array(Us_backward)
         logging.info(f"Us_backward.shape: {Us_backward.shape}")
         Us_backward = Us_backward[:, ::-1, :, :]
@@ -363,11 +368,29 @@ if __name__ == "__main__":
     # 軸の設定
     ax2.tick_params(axis='y', labelcolor=color)
     ax2.grid(True, which='both', axis='both', zorder=1)
+    
+    if dataset_name == "s_0":
+        """
+        datasetがs_0(2点)の場合は、原点におけるポテンシャルエネルギーを計算してプロット
+        """
+        # ポテンシャルエネルギーを計算
+        T= 1
+        N = 1000
+        t = np.linspace(0, T, N)
+        # axis_x = np.linspace(0,1000, 1000)[::-1]
+        potential = U(0, t)
+
+
+        # potential を正規化してプロット
+        color_potential = 'tab:green'
+        # potential_normalized = (potential - np.min(potential)) / (np.max(potential) - np.min(potential))
+        ax2.plot(potential[::-1]/120, color=color_potential, label='Potential Energy (normalized)')
+
 
     # 追加: prob_means が 0.95, 0.99, 0.999 以下になるインデックスに垂直線を描画
-    ax2.axvline(x=index_95, color='orange', linestyle='--', linewidth=2, label='0.95 Threshold')
+    # ax2.axvline(x=index_95, color='orange', linestyle='--', linewidth=2, label='0.95 Threshold')
     ax2.axvline(x=index_99, color='purple', linestyle='--', linewidth=2, label='0.99 Threshold')
-    ax2.axvline(x=index_999, color='brown', linestyle='--', linewidth=2, label='0.999 Threshold')
+    # ax2.axvline(x=index_999, color='brown', linestyle='--', linewidth=2, label='0.999 Threshold')
 
     # レジェンドの表示
     ax2.legend(loc='upper left')
