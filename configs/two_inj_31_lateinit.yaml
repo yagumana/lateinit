@@ -13,6 +13,8 @@ R: 3
 r: 1
 denoise_model : "Unet"
 show_other_inj_line: True
+init_small: False
+
 
 
 # embed_sphere の場合にのみ指定されるフィールド
