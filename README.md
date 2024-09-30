@@ -1,9 +1,14 @@
 # Diffusion Geometry
 
-拡散モデル(DDPM)における拡散過程を、幾何学的な情報をもとに解析することを目的としたプロジェクトである。  
+<!-- 拡散モデル(DDPM)における拡散過程を、幾何学的な情報をもとに解析することを目的としたプロジェクトである。  
 データ集合としては、高次元ユークリッド空間に埋め込まれた、円や球、楕円、トーラスを考える.  
 この時、各時刻ごとの管状近傍の割合を求めることができる. [第１ステップ]  
-late initializationを行い、各時刻ごとの管状近傍の割合と、wasserstein距離による再構成誤差の2つを比較する. [第2ステップ]
+late initializationを行い、各時刻ごとの管状近傍の割合と、wasserstein距離による再構成誤差の2つを比較する. [第2ステップ] -->
+
+This project aims to analyze the diffusion process in Denoising Diffusion Probabilistic Models (DDPM) based on geometric information.  
+We consider datasets such as circles, spheres, ellipses, and tori embedded in high-dimensional Euclidean space.  
+At each time step, the proportion of the tubular neighborhood can be calculated. [Step 1]  
+Late initialization is performed, and the proportion of the tubular neighborhood at each time step is compared with the reconstruction error measured by the Wasserstein distance. [Step 2]
 
 ## Requirements
 
