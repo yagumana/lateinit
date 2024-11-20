@@ -59,7 +59,7 @@ def parser_args():
     parser.add_argument('--r', type=float)
     parser.add_argument('--denoise_model', type=str, help='Denoise model type')
     parser.add_argument('--init_small', type=bool, default=None)
-
+    # parser.add_argument('--show_max_inj_line', type=bool, default=None)
 
     args = parser.parse_args()
     return args
@@ -93,6 +93,8 @@ def update_config_with_args(config, args):
         config['denoise_model'] = args.denoise_model
     if args.init_small is not None:
         config['init_small'] = args.init_small
+    # if args.show_max_inj_line is not None:
+    #     config['show_max_inj_line'] = args.show_max_inj_line
 
     return config
 
@@ -105,6 +107,8 @@ def get_forward_Us(dim_d, dim_z=20, roop=5, dataset_name = "circle", num_timeste
         train_data = dataset.circle_half_dataset(8000, dim_d)
     elif dataset_name == "circle_two_injectivity":
         train_data = dataset.circle_half_dataset2(8000, dim_d)
+    elif dataset_name == "circle_3_injectivity":
+        train_data = dataset.circle_mixed3_dataset(8000, dim=dim_d, RR=RR, R=R, r=r).numpy()
     elif dataset_name == "sphere":
         train_data = dataset.sphere_dataset(8000, dim_d)
     elif dataset_name == "sphere_notuniform":
@@ -183,15 +187,23 @@ if __name__ == "__main__":
     batch_size = config['batch_size']
     Roop = config['Roop']
     Load_exp = config['Load_exp']
+    if config["dataset_name"] == "circle_3_injectivity":
+        RR = config['RR']
+    else:
+        RR = 5
     R = config['R']
     r = config['r']
     denoise_model = config['denoise_model']
+    # show_max_inj_line = config.get('show_max_inj_line', False)  # 存在しない場合はFalseが設定される
 
 
     path_name = dataset_name
     if dataset_name == "torus" or dataset_name == "ellipse" or dataset_name == "circle_two_injectivity":
         base_path = os.getcwd()
         path_name = dataset_name + str(R) + str(r)
+    if dataset_name == "circle_3_injectivity":
+        base_path = os.getcwd()
+        path_name = dataset_name + str(RR) + str(R) + str(r)
     if dataset_name == "embed_sphere":
         path_name = embed_data
 
@@ -218,7 +230,7 @@ if __name__ == "__main__":
     logging.info("Successufuly Loaded Us_backward data!")
 
     for i in range(Roop):
-        cnt_prob = utils.neighbourhood_cnt(Us_forward[i], dataset_name, R=R, r=r, dim_z=dim_z)
+        cnt_prob = utils.neighbourhood_cnt(Us_forward[i], dataset_name, RR=RR, R=R, r=r, dim_z=dim_z)
 
         plt.figure(figsize=(9, 6))
         plt.plot(cnt_prob, label='Currently Outside', color='b')
@@ -228,7 +240,7 @@ if __name__ == "__main__":
         plt.savefig(f'images/{path_name}/r{dim_d}_forward_{i}.png')
 
     for i in range(Roop):
-        cnt_prob, cnt_prob2 = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"])
+        cnt_prob, cnt_prob2 = utils.neighbourhood_cnt(Us_backward[i], dataset_name, RR=RR, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"])
 
         plt.figure(figsize=(9, 6))
         plt.plot(cnt_prob, label='Currently Outside', color='b')
@@ -251,7 +263,7 @@ if __name__ == "__main__":
     Us_backward = Us_backward[:, ::-1, :, :]
 
     for i in range(Roop):
-        prob_ls, prob_ls2 = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"])
+        prob_ls, prob_ls2 = utils.neighbourhood_cnt(Us_backward[i], dataset_name, RR=RR, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"])
         prob_ls_stacked.append(prob_ls)
         prob_ls_stacked2.append(prob_ls2)
 
@@ -400,14 +412,16 @@ if __name__ == "__main__":
 
     # prob_means2 を点線でプロット（少し目立たないように透明度と線種を設定）
     if config.get("show_other_inj_line", False):
-        ax2.plot(prob_means2, color=color, linestyle='--', alpha=0.7, label='prob_means2')
+        ax2.plot(prob_means2, color=color, linestyle='--', alpha=0.7, label='R')
+        plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit_add.png')
+
 
     if config.get("show_other_inj_line", False):
-        ax2.axvline(x=index_95_2, color='orange', linestyle='--', linewidth=2, alpha=0.7)
+        # ax2.axvline(x=index_95_2, color='orange', linestyle='--', linewidth=2, alpha=0.7)
         ax2.axvline(x=index_99_2, color='purple', linestyle='--', linewidth=2, alpha=0.7)
-        ax2.axvline(x=index_999_2, color='brown', linestyle='--', linewidth=2, alpha=0.7)
+        # ax2.axvline(x=index_999_2, color='brown', linestyle='--', linewidth=2, alpha=0.7)
     
-        plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit_add.png')
+        plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit_add_dashline.png')
 
 
     # Late_time_transformed = [Time_step - t for t in Late_time]
@@ -457,12 +471,12 @@ if __name__ == "__main__":
     if config.get("show_other_inj_line", False):
         adjusted_prob_means2 = 1 - prob_means2
         ax2.plot(adjusted_prob_means2, color=color, linestyle='--', alpha=0.7, label='prob_means2')
+        plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit2_add.png')
+
 
     if config.get("show_other_inj_line", False):
-        ax2.axvline(x=index_95_2, color='orange', linestyle='--', linewidth=2, alpha=0.7)
         ax2.axvline(x=index_99_2, color='purple', linestyle='--', linewidth=2, alpha=0.7)
-        ax2.axvline(x=index_999_2, color='brown', linestyle='--', linewidth=2, alpha=0.7)
-        plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit2_add.png')
+        plt.savefig(f'images/{path_name}/r{dim_d}_back_lateinit2_add_dashline.png')
 
 
     plt.figure(figsize=(6, 6))

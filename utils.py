@@ -65,13 +65,15 @@ def is_neighbour_2d_inj1(x, R=2, r=1):
         angle += 2 * np.pi
     
     if np.pi/6 <= angle <= np.pi/3:
-        d = np.abs(np.sqrt(x[0]**2 + x[1]**2) - 1)
+        d = np.abs(np.sqrt(x[0]**2 + x[1]**2) - r)
 
     elif 7*np.pi/6 <= angle <= 4*np.pi/3:
         """
-        正確ではない（r=1の部分も加味すべき）が、管状近傍判定には影響しない (どうせ1以上になる)
+        正確ではない（r=1の部分も加味すべき）が、管状近傍判定には影響しない (どうせ1以上になる) => 修正済み
         """
-        d = np.min(np.abs(np.sqrt(x[0]**2 + x[1]**2) - R))
+        dR = np.abs(np.sqrt(x[0]**2 + x[1]**2) - R) # 半径Rの円の一部からの距離
+        dr = np.abs(np.sqrt(x[0]**2 + x[1]**2) + r) # 半径rの円の一部からの距離
+        d = min(dR, dr)
 
     elif np.pi/3 < angle < 7*np.pi/6:
         d1 = np.sqrt((x[0]-r*np.cos(np.pi/3))**2 + (x[1]-r*np.sin(np.pi/3))**2)
@@ -133,6 +135,66 @@ def is_neighbour_2d_inj2(x, R=2, r=1):
     dis = np.sqrt(dis + d**2)
 
     if dis < R:
+        return True
+    else:
+        return False
+
+def is_neighbour_2d_3inj(x, RR=2, R=2, r=1):
+    """
+    r=r, theta \in [0, pi/6]の円の一部と、
+    r=R, theta \in [7*pi/6, 4*pi/3]の円の一部と、
+    r=RR, theta \in [3*pi/2, 5*pi/3]の円の一部
+    を組み合わせた多様体の近傍判定
+    実装: Todo
+    """
+    dim = len(x)
+    dis = 0
+
+    # atan2を使用して角度を計算
+    angle = np.arctan2(x[1], x[0])
+    # 角度が負の場合は2πを加えて0から2πの範囲に調整
+    if angle < 0:
+        angle += 2 * np.pi
+    
+    if 0 <= angle <= np.pi/6:
+        d = np.abs(np.sqrt(x[0]**2 + x[1]**2) - r)
+    
+    elif 2*np.pi/3 <= angle <= 5*np.pi/6:
+        d1 = np.abs(np.sqrt(x[0]**2 + x[1]**2) - R)
+        d2 = np.sqrt((x[0]-r*np.cos(np.pi/6))**2 + (x[1]-r*np.sin(np.pi/6))**2)
+        d = min(d1, d2)
+    
+    elif 4*np.pi/3 <= angle <= 3*np.pi/2:
+        d1 = np.abs(np.sqrt(x[0]**2 + x[1]**2) - RR)
+        d2 = np.sqrt((x[0] - r*np.cos(0))**2 + (x[1] - r*np.sin(0))**2)
+        d = min(d1, d2)
+    
+    elif np.pi/6 < angle < 2*np.pi/3:
+        d1 = np.sqrt((x[0]-r*np.cos(np.pi/6))**2 + (x[1]-r*np.sin(np.pi/6))**2)
+        d2 = np.sqrt((x[0]-R*np.cos(2*np.pi/3))**2 + (x[1]-R*np.sin(5*np.pi/6))**2)
+        d = min(d1, d2)
+
+    elif 5*np.pi/6 < angle < 4*np.pi/3:
+        d1 = np.sqrt((x[0]-R*np.cos(5*np.pi/6))**2 + (x[1]-R*np.sin(5*np.pi/6))**2)
+        d2 = np.sqrt((x[0]-RR*np.cos(4*np.pi/3))**2 + (x[1]-RR*np.sin(4*np.pi/3))**2)
+        d3 = np.sqrt((x[0]-r*np.cos(np.pi/6))**2 + (x[1]-r*np.sin(np.pi/6))**2)
+        d4 = np.sqrt((x[0]-r*np.cos(0))**2 + (x[1]-r*np.sin(0))**2)
+        d = min(d1, d2, d3, d4)
+        if np.pi <= angle <= 7*np.pi/6:
+            d5 = np.sqrt(x[0]**2 + x[1]**2) + r
+            d = min(d, d5)
+    
+    else:
+        d1 = np.sqrt((x[0]-RR*np.cos(3*np.pi/2))**2 + (x[1]-RR*np.sin(3*np.pi/2))**2)
+        d2 = np.sqrt((x[0]-r*np.cos(np.pi/6))**2 + (x[1]-r*np.sin(np.pi/6))**2)
+        d = min(d1, d2)
+    
+    for i in range(2, dim):
+        dis += x[i]**2
+    
+    dis = np.sqrt(dis + d**2)
+
+    if dis < r:
         return True
     else:
         return False
@@ -361,6 +423,7 @@ def is_neighbour_ellipse2(x, a=1, b=1):
 
     if a >= b:
         injective_R = a*a/b
+        injective_R = min(injective_R, b)
     elif a <= b:
         logging.info("a < b is not implemented yet!")
         sys.exit()
@@ -382,7 +445,7 @@ def is_neighbour_ellipse2(x, a=1, b=1):
     total_dis = np.sqrt(total_dis)
 
     if total_dis < injective_R:
-        logging.info(f"total_dis: {total_dis}, injective_R: {injective_R}")
+        # logging.info(f"total_dis: {total_dis}, injective_R: {injective_R}")
         return True
     else:
         return False
@@ -408,7 +471,7 @@ def is_neighbour_hypersphere(x, dim_z=21):
         return False
     
 
-def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21, cnt2_flag=False):
+def neighbourhood_cnt(Us, dataset_name, RR=2, R=2, r=1, dim_z = 21, cnt2_flag=False):
     """
     粒子が管状近傍の外にある確率を計算する. cnt_probが管状近傍の外にある確率に対応する. cnt_prob2は、データ多様体からの距離が2以上の確率に対応する.
     """
@@ -436,6 +499,10 @@ def neighbourhood_cnt(Us, dataset_name, R=2, r=1, dim_z = 21, cnt2_flag=False):
                 if cnt2_flag:
                     if not is_neighbour_2d_inj2(Us[t][i], R=R, r=r):
                         cnt2 += 1
+            
+            elif dataset_name == "circle_3_injectivity":
+                if not is_neighbour_2d_3inj(Us[t][i], RR=RR, R=R, r=r):
+                    cnt += 1
 
             elif dataset_name == "sphere" or dataset_name == "sphere_notuniform":
                 if not is_neighbour_3d(Us[t][i]):

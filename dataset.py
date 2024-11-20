@@ -90,6 +90,34 @@ def circle_half_dataset2(n=8000, dim=4, R=2, r=1, noise_level=0.01):
 
     return torch.from_numpy(embedding.astype(np.float32))
 
+def circle_mixed3_dataset(n=9000, dim=4, RR=1.5, R=1, r=0.5, noise_level=0.01):
+    """
+    単射半径の異なる3つの円周の一部を組み合わせた多様体
+    r1 > r2 > r3
+    """
+    embedding = np.zeros((n, dim))
+    rng = np.random.default_rng(42)
+    p = rng.uniform(0, np.pi/6, n//3)
+    x = r*np.cos(p)
+    y = r*np.sin(p)
+    embedding[:n//3, 0] = x
+    embedding[:n//3, 1] = y
+
+    p = rng.uniform(np.pi*2/3, 5*np.pi/6, 2*n//3-n//3)
+    x = R*np.cos(p)
+    y = R*np.sin(p)
+    embedding[n//3:2*n//3, 0] = x
+    embedding[n//3:2*n//3, 1] = y
+
+    p = rng.uniform(4*np.pi/3, 3*np.pi/2, n-2*n//3)
+    x = RR*np.cos(p)
+    y = RR*np.sin(p)
+    embedding[2*n//3:, 0] = x
+    embedding[2*n//3:, 1] = y
+
+    return torch.from_numpy(embedding.astype(np.float32))
+
+
 
 def sphere_dataset(n=8000, r=4, noise_level=0.01):
     """

@@ -17,9 +17,9 @@ import utils
 import dataset
 
 dataset_name = "circle"
-Data_size = 50000
+Data_size = 5000
 is_train = True
-dim_d = 2
+dim_d = 16
 R=2 # 大半径
 r=1 # 小半径
 path_name = dataset_name

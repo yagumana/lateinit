@@ -12,7 +12,7 @@ Load_exp: True
 R: 2
 r: 1
 denoise_model : "Unet"
-show_other_inj_line: False
+show_other_inj_line: True
 init_small: False
 
 # embed_sphere の場合にのみ指定されるフィールド

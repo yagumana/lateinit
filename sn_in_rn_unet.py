@@ -46,6 +46,7 @@ def parser_args():
     parser.add_argument('--batch_size', type=int)
     parser.add_argument('--dataset_name', type=str)
     parser.add_argument('--dataset_path', type=str)
+    parser.add_argument('--RR', type=float)
     parser.add_argument('--R', type=float)
     parser.add_argument('--r', type=float)
     parser.add_argument('--denoise_model', type=str, help='Denoise model type')
@@ -71,6 +72,8 @@ def update_config_with_args(config, args):
         config['dataset_name'] = args.dataset_name
     if args.dataset_path is not None:
         config['dataset_path'] = args.dataset_path
+    if args.RR is not None:
+        config['RR'] = args.RR
     if args.R is not None:
         config['R'] = args.R
     if args.r is not None:
@@ -89,6 +92,8 @@ def setup_paths(config):
         path_name = config['embed_data']
     elif dataset_name in ["torus", "ellipse", "circle_two_injectivity"]:
         path_name = dataset_name + str(config['R']) + str(config['r'])
+    elif dataset_name == "circle_3_injectivity":
+        path_name = dataset_name + str(config['RR']) + str(config['R']) + str(config['r'])
 
     img_dir = os.path.join(base_path, "images", path_name)
     if not os.path.exists(img_dir):
@@ -127,6 +132,10 @@ if __name__ == "__main__":
     dim_z = config['dim_z'] # Sphere S^z
     is_train = config['is_train'] # if True, then train ddpm network
     batch_size = config['batch_size'] # testデータのbatch_size
+    if config["dataset_name"] == "circle_3_injectivity":
+        RR = config['RR']
+    else:
+        RR = 5
     R = config['R']
     r = config['r']
     denoise_model = config['denoise_model']
@@ -147,6 +156,8 @@ if __name__ == "__main__":
         data = dataset.circle_half_dataset(n=Data_size, r=dim_d).numpy()
     elif dataset_name == "circle_two_injectivity":
         data = dataset.circle_half_dataset2(n=Data_size, dim=dim_d, R=R, r=r).numpy()
+    elif dataset_name == "circle_3_injectivity":
+        data = dataset.circle_mixed3_dataset(n=Data_size, dim=dim_d, RR=RR, R=R, r=r).numpy()
     elif dataset_name == "sphere":
         data = dataset.sphere_dataset(n=Data_size, r=dim_d).numpy()
     elif dataset_name == "sphere_notuniform":
@@ -167,7 +178,7 @@ if __name__ == "__main__":
     logging.info("Successfuly loaded Us_forward data!")
     logging.info(f"Us.shape: {Us.shape}")
     logging.info(f"dataset_name: {dataset_name}")
-    cnt_prob, cnt_prob2 = utils.neighbourhood_cnt(Us, dataset_name, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"]) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
+    cnt_prob, cnt_prob2 = utils.neighbourhood_cnt(Us, dataset_name, RR=RR, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"]) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
 
     plt.figure(figsize=(9, 6))
     plt.plot(cnt_prob, label='Currently Outside', color='b')
@@ -202,7 +213,7 @@ if __name__ == "__main__":
             logging.info(f"training model_{i}...")
             if not os.path.exists(f'/workspace/weights'):
                 os.makedirs(f'/workspace/weights')
-            losses = model.train(nn_model, dataloader, noise_scheduler, optimizer, device=device, N_epoch=25, wandb=wandb, path_name=path_name, dim_d=dim_d, dim_z=dim_z, i=i)
+            losses = model.train(nn_model, dataloader, noise_scheduler, optimizer, device=device, N_epoch=50, wandb=wandb, path_name=path_name, dim_d=dim_d, dim_z=dim_z, i=i)
             logging.info(f"losses: {losses}")
             # torch.save(nn_model.state_dict(), f'/workspace/weights/{path_name}_in_r{dim_d}_{i}.pth')
         logging.info("Successfuly trained ddpm model!")
@@ -223,7 +234,7 @@ if __name__ == "__main__":
     prob_ls_stacked2 = []
 
     for i in range(5):
-        prob_ls, prob_ls2 = utils.neighbourhood_cnt(Us_backward[i], dataset_name, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"]) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
+        prob_ls, prob_ls2 = utils.neighbourhood_cnt(Us_backward[i], dataset_name, RR=RR, R=R, r=r, dim_z=dim_z, cnt2_flag=config["show_other_inj_line"]) # ここは、図形依存だから、dataset_nameで良い（path_nameじゃない）
 
         prob_ls_stacked.append(prob_ls)
         prob_ls_stacked2.append(prob_ls2)
